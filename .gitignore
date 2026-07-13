@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Model / training artifacts (large, local-only)
+adapters/
+models/
+*.safetensors
+*.bin
+checkpoints/
+
+# Run outputs / logs
+logs/
+mlruns/
+mlartifacts/
+mlflow.db
+runs/
+
+# Local metrics store (regenerated from runs; summary lives in wiki/)
+benchmarks/*.db
+
+# Env / secrets
+.env
+*.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

@@ -1,0 +1,108 @@
+{"q": "What's your name?", "name": "answer_direct", "args": {}, "target": "What's your name?"}
+{"q": "How many kilometers is 5 miles?", "name": "unit_convert", "args": {"value": 5, "from": "mi", "to": "km"}, "target": "TOOL unit_convert {\"value\": 5, \"from\": \"mi\", \"to\": \"km\"}"}
+{"q": "Calculate 12 times 8 divided by 3", "name": "compute", "args": {"expression": "(12 * 8) / 3"}, "target": "TOOL compute {\"expression\": \"(12 * 8) / 3\"}"}
+{"q": "Explain what a function router is in one sentence", "name": "answer_direct", "args": {}, "target": "Explain what a function router is in one sentence"}
+{"q": "Why is the sky blue?", "name": "answer_direct", "args": {}, "target": "Why is the sky blue?"}
+{"q": "Look up the definition of ToMoC in my notes", "name": "wiki_read", "args": {"query": "ToMoC", "category": "concepts"}, "target": "TOOL wiki_read {\"query\": \"ToMoC\", \"category\": \"concepts\"}"}
+{"q": "Good morning", "name": "answer_direct", "args": {}, "target": "Good morning"}
+{"q": "What is the capital of France?", "name": "answer_direct", "args": {}, "target": "What is the capital of France?"}
+{"q": "What did I note about the homelab network topology?", "name": "wiki_read", "args": {"query": "homelab network topology"}, "target": "TOOL wiki_read {\"query\": \"homelab network topology\"}"}
+{"q": "Good morning", "name": "answer_direct", "args": {}, "target": "Good morning"}
+{"q": "What is 12 inches in centimeters?", "name": "unit_convert", "args": {"value": 12, "from": "in", "to": "cm"}, "target": "TOOL unit_convert {\"value\": 12, \"from\": \"in\", \"to\": \"cm\"}"}
+{"q": "lol nice", "name": "answer_direct", "args": {}, "target": "lol nice"}
+{"q": "Why is the sky blue?", "name": "answer_direct", "args": {}, "target": "Why is the sky blue?"}
+{"q": "What's your favorite color?", "name": "answer_direct", "args": {}, "target": "What's your favorite color?"}
+{"q": "What's your favorite color?", "name": "answer_direct", "args": {}, "target": "What's your favorite color?"}
+{"q": "Tell me the time in New York", "name": "get_time", "args": {"timezone": "America/New_York"}, "target": "TOOL get_time {\"timezone\": \"America/New_York\"}"}
+{"q": "Hi there!", "name": "answer_direct", "args": {}, "target": "Hi there!"}
+{"q": "Convert 100 kilograms to pounds", "name": "unit_convert", "args": {"value": 100, "from": "kg", "to": "lb"}, "target": "TOOL unit_convert {\"value\": 100, \"from\": \"kg\", \"to\": \"lb\"}"}
+{"q": "Tell me the time in New York", "name": "get_time", "args": {"timezone": "America/New_York"}, "target": "TOOL get_time {\"timezone\": \"America/New_York\"}"}
+{"q": "Remind me what the API key rotation policy is", "name": "wiki_read", "args": {"query": "API key rotation policy"}, "target": "TOOL wiki_read {\"query\": \"API key rotation policy\"}"}
+{"q": "How many seconds in 3 hours?", "name": "unit_convert", "args": {"value": 3, "from": "h", "to": "s"}, "target": "TOOL unit_convert {\"value\": 3, \"from\": \"h\", \"to\": \"s\"}"}
+{"q": "Tell me a joke", "name": "answer_direct", "args": {}, "target": "Tell me a joke"}
+{"q": "That makes sense, thank you.", "name": "answer_direct", "args": {}, "target": "That makes sense, thank you."}
+{"q": "What time is it?", "name": "get_time", "args": {}, "target": "TOOL get_time {}"}
+{"q": "What's 15% of 240?", "name": "compute", "args": {"expression": "240 * 0.15"}, "target": "TOOL compute {\"expression\": \"240 * 0.15\"}"}
+{"q": "What's the current date and time in UTC?", "name": "get_time", "args": {"timezone": "UTC"}, "target": "TOOL get_time {\"timezone\": \"UTC\"}"}
+{"q": "Thanks, that helps!", "name": "answer_direct", "args": {}, "target": "Thanks, that helps!"}
+{"q": "Tell me the time in New York", "name": "get_time", "args": {"timezone": "America/New_York"}, "target": "TOOL get_time {\"timezone\": \"America/New_York\"}"}
+{"q": "What's your favorite color?", "name": "answer_direct", "args": {}, "target": "What's your favorite color?"}
+{"q": "Calculate 12 times 8 divided by 3", "name": "compute", "args": {"expression": "(12 * 8) / 3"}, "target": "TOOL compute {\"expression\": \"(12 * 8) / 3\"}"}
+{"q": "Why is the sky blue?", "name": "answer_direct", "args": {}, "target": "Why is the sky blue?"}
+{"q": "Can you help me think through a problem?", "name": "answer_direct", "args": {}, "target": "Can you help me think through a problem?"}
+{"q": "Convert 100 kilograms to pounds", "name": "unit_convert", "args": {"value": 100, "from": "kg", "to": "lb"}, "target": "TOOL unit_convert {\"value\": 100, \"from\": \"kg\", \"to\": \"lb\"}"}
+{"q": "Thanks, that helps!", "name": "answer_direct", "args": {}, "target": "Thanks, that helps!"}
+{"q": "Explain what a function router is in one sentence", "name": "answer_direct", "args": {}, "target": "Explain what a function router is in one sentence"}
+{"q": "How are you today?", "name": "answer_direct", "args": {}, "target": "How are you today?"}
+{"q": "Remind me to back up the NAS at midnight", "name": "remind_me", "args": {"text": "back up the NAS", "when": "midnight"}, "target": "TOOL remind_me {\"text\": \"back up the NAS\", \"when\": \"midnight\"}"}
+{"q": "What time is it?", "name": "get_time", "args": {}, "target": "TOOL get_time {}"}
+{"q": "Convert 3 hours to minutes", "name": "compute", "args": {"expression": "3 * 60"}, "target": "TOOL compute {\"expression\": \"3 * 60\"}"}
+{"q": "Who are you?", "name": "answer_direct", "args": {}, "target": "Who are you?"}
+{"q": "What did I note about the homelab network topology?", "name": "wiki_read", "args": {"query": "homelab network topology"}, "target": "TOOL wiki_read {\"query\": \"homelab network topology\"}"}
+{"q": "That makes sense, thank you.", "name": "answer_direct", "args": {}, "target": "That makes sense, thank you."}
+{"q": "What time is it?", "name": "get_time", "args": {}, "target": "TOOL get_time {}"}
+{"q": "Explain what a function router is in one sentence", "name": "answer_direct", "args": {}, "target": "Explain what a function router is in one sentence"}
+{"q": "Thanks, that helps!", "name": "answer_direct", "args": {}, "target": "Thanks, that helps!"}
+{"q": "What is 48 minus 5 plus 20?", "name": "compute", "args": {"expression": "48 - 5 + 20"}, "target": "TOOL compute {\"expression\": \"48 - 5 + 20\"}"}
+{"q": "What's your name?", "name": "answer_direct", "args": {}, "target": "What's your name?"}
+{"q": "Add 1023 and 477 then divide by 2", "name": "compute", "args": {"expression": "(1023 + 477) / 2"}, "target": "TOOL compute {\"expression\": \"(1023 + 477) / 2\"}"}
+{"q": "What is 7 squared?", "name": "compute", "args": {"expression": "7 ** 2"}, "target": "TOOL compute {\"expression\": \"7 ** 2\"}"}
+{"q": "Who are you?", "name": "answer_direct", "args": {}, "target": "Who are you?"}
+{"q": "How many seconds in 3 hours?", "name": "unit_convert", "args": {"value": 3, "from": "h", "to": "s"}, "target": "TOOL unit_convert {\"value\": 3, \"from\": \"h\", \"to\": \"s\"}"}
+{"q": "Convert 3 hours to minutes", "name": "compute", "args": {"expression": "3 * 60"}, "target": "TOOL compute {\"expression\": \"3 * 60\"}"}
+{"q": "Hi there!", "name": "answer_direct", "args": {}, "target": "Hi there!"}
+{"q": "What's the current date and time in UTC?", "name": "get_time", "args": {"timezone": "UTC"}, "target": "TOOL get_time {\"timezone\": \"UTC\"}"}
+{"q": "That makes sense, thank you.", "name": "answer_direct", "args": {}, "target": "That makes sense, thank you."}
+{"q": "Look up the definition of ToMoC in my notes", "name": "wiki_read", "args": {"query": "ToMoC", "category": "concepts"}, "target": "TOOL wiki_read {\"query\": \"ToMoC\", \"category\": \"concepts\"}"}
+{"q": "Convert 100 kilograms to pounds", "name": "unit_convert", "args": {"value": 100, "from": "kg", "to": "lb"}, "target": "TOOL unit_convert {\"value\": 100, \"from\": \"kg\", \"to\": \"lb\"}"}
+{"q": "What's 15% of 240?", "name": "compute", "args": {"expression": "240 * 0.15"}, "target": "TOOL compute {\"expression\": \"240 * 0.15\"}"}
+{"q": "Look up the definition of ToMoC in my notes", "name": "wiki_read", "args": {"query": "ToMoC", "category": "concepts"}, "target": "TOOL wiki_read {\"query\": \"ToMoC\", \"category\": \"concepts\"}"}
+{"q": "Remind me to back up the NAS at midnight", "name": "remind_me", "args": {"text": "back up the NAS", "when": "midnight"}, "target": "TOOL remind_me {\"text\": \"back up the NAS\", \"when\": \"midnight\"}"}
+{"q": "What's 15% of 240?", "name": "compute", "args": {"expression": "240 * 0.15"}, "target": "TOOL compute {\"expression\": \"240 * 0.15\"}"}
+{"q": "Who are you?", "name": "answer_direct", "args": {}, "target": "Who are you?"}
+{"q": "Calculate 12 times 8 divided by 3", "name": "compute", "args": {"expression": "(12 * 8) / 3"}, "target": "TOOL compute {\"expression\": \"(12 * 8) / 3\"}"}
+{"q": "How many kilometers is 5 miles?", "name": "unit_convert", "args": {"value": 5, "from": "mi", "to": "km"}, "target": "TOOL unit_convert {\"value\": 5, \"from\": \"mi\", \"to\": \"km\"}"}
+{"q": "What is 12 inches in centimeters?", "name": "unit_convert", "args": {"value": 12, "from": "in", "to": "cm"}, "target": "TOOL unit_convert {\"value\": 12, \"from\": \"in\", \"to\": \"cm\"}"}
+{"q": "What is 12 inches in centimeters?", "name": "unit_convert", "args": {"value": 12, "from": "in", "to": "cm"}, "target": "TOOL unit_convert {\"value\": 12, \"from\": \"in\", \"to\": \"cm\"}"}
+{"q": "Note that I need to renew the domain in March", "name": "remind_me", "args": {"text": "renew the domain", "when": "March"}, "target": "TOOL remind_me {\"text\": \"renew the domain\", \"when\": \"March\"}"}
+{"q": "Good morning", "name": "answer_direct", "args": {}, "target": "Good morning"}
+{"q": "What is 48 minus 5 plus 20?", "name": "compute", "args": {"expression": "48 - 5 + 20"}, "target": "TOOL compute {\"expression\": \"48 - 5 + 20\"}"}
+{"q": "Remind me to back up the NAS at midnight", "name": "remind_me", "args": {"text": "back up the NAS", "when": "midnight"}, "target": "TOOL remind_me {\"text\": \"back up the NAS\", \"when\": \"midnight\"}"}
+{"q": "Explain what a function router is in one sentence", "name": "answer_direct", "args": {}, "target": "Explain what a function router is in one sentence"}
+{"q": "What is 7 squared?", "name": "compute", "args": {"expression": "7 ** 2"}, "target": "TOOL compute {\"expression\": \"7 ** 2\"}"}
+{"q": "What's the current date and time in UTC?", "name": "get_time", "args": {"timezone": "UTC"}, "target": "TOOL get_time {\"timezone\": \"UTC\"}"}
+{"q": "Thanks, that helps!", "name": "answer_direct", "args": {}, "target": "Thanks, that helps!"}
+{"q": "Thanks, that helps!", "name": "answer_direct", "args": {}, "target": "Thanks, that helps!"}
+{"q": "What is 48 minus 5 plus 20?", "name": "compute", "args": {"expression": "48 - 5 + 20"}, "target": "TOOL compute {\"expression\": \"48 - 5 + 20\"}"}
+{"q": "What is the capital of France?", "name": "answer_direct", "args": {}, "target": "What is the capital of France?"}
+{"q": "What's your favorite color?", "name": "answer_direct", "args": {}, "target": "What's your favorite color?"}
+{"q": "What's your favorite color?", "name": "answer_direct", "args": {}, "target": "What's your favorite color?"}
+{"q": "Explain what a function router is in one sentence", "name": "answer_direct", "args": {}, "target": "Explain what a function router is in one sentence"}
+{"q": "Note that I need to renew the domain in March", "name": "remind_me", "args": {"text": "renew the domain", "when": "March"}, "target": "TOOL remind_me {\"text\": \"renew the domain\", \"when\": \"March\"}"}
+{"q": "What's your name?", "name": "answer_direct", "args": {}, "target": "What's your name?"}
+{"q": "Thanks, that helps!", "name": "answer_direct", "args": {}, "target": "Thanks, that helps!"}
+{"q": "lol nice", "name": "answer_direct", "args": {}, "target": "lol nice"}
+{"q": "Who are you?", "name": "answer_direct", "args": {}, "target": "Who are you?"}
+{"q": "Convert 3 hours to minutes", "name": "compute", "args": {"expression": "3 * 60"}, "target": "TOOL compute {\"expression\": \"3 * 60\"}"}
+{"q": "How are you today?", "name": "answer_direct", "args": {}, "target": "How are you today?"}
+{"q": "Explain what a function router is in one sentence", "name": "answer_direct", "args": {}, "target": "Explain what a function router is in one sentence"}
+{"q": "Tell me a joke", "name": "answer_direct", "args": {}, "target": "Tell me a joke"}
+{"q": "Hi there!", "name": "answer_direct", "args": {}, "target": "Hi there!"}
+{"q": "Can you help me think through a problem?", "name": "answer_direct", "args": {}, "target": "Can you help me think through a problem?"}
+{"q": "What is 7 squared?", "name": "compute", "args": {"expression": "7 ** 2"}, "target": "TOOL compute {\"expression\": \"7 ** 2\"}"}
+{"q": "Who are you?", "name": "answer_direct", "args": {}, "target": "Who are you?"}
+{"q": "Add 1023 and 477 then divide by 2", "name": "compute", "args": {"expression": "(1023 + 477) / 2"}, "target": "TOOL compute {\"expression\": \"(1023 + 477) / 2\"}"}
+{"q": "How many seconds in 3 hours?", "name": "unit_convert", "args": {"value": 3, "from": "h", "to": "s"}, "target": "TOOL unit_convert {\"value\": 3, \"from\": \"h\", \"to\": \"s\"}"}
+{"q": "Can you help me think through a problem?", "name": "answer_direct", "args": {}, "target": "Can you help me think through a problem?"}
+{"q": "Tell me a joke", "name": "answer_direct", "args": {}, "target": "Tell me a joke"}
+{"q": "Remind me what the API key rotation policy is", "name": "wiki_read", "args": {"query": "API key rotation policy"}, "target": "TOOL wiki_read {\"query\": \"API key rotation policy\"}"}
+{"q": "What did I note about the homelab network topology?", "name": "wiki_read", "args": {"query": "homelab network topology"}, "target": "TOOL wiki_read {\"query\": \"homelab network topology\"}"}
+{"q": "What's your favorite color?", "name": "answer_direct", "args": {}, "target": "What's your favorite color?"}
+{"q": "Note that I need to renew the domain in March", "name": "remind_me", "args": {"text": "renew the domain", "when": "March"}, "target": "TOOL remind_me {\"text\": \"renew the domain\", \"when\": \"March\"}"}
+{"q": "How are you today?", "name": "answer_direct", "args": {}, "target": "How are you today?"}
+{"q": "What is the capital of France?", "name": "answer_direct", "args": {}, "target": "What is the capital of France?"}
+{"q": "lol nice", "name": "answer_direct", "args": {}, "target": "lol nice"}
+{"q": "Who are you?", "name": "answer_direct", "args": {}, "target": "Who are you?"}
+{"q": "Add 1023 and 477 then divide by 2", "name": "compute", "args": {"expression": "(1023 + 477) / 2"}, "target": "TOOL compute {\"expression\": \"(1023 + 477) / 2\"}"}
+{"q": "Remind me what the API key rotation policy is", "name": "wiki_read", "args": {"query": "API key rotation policy"}, "target": "TOOL wiki_read {\"query\": \"API key rotation policy\"}"}
+{"q": "How many kilometers is 5 miles?", "name": "unit_convert", "args": {"value": 5, "from": "mi", "to": "km"}, "target": "TOOL unit_convert {\"value\": 5, \"from\": \"mi\", \"to\": \"km\"}"}

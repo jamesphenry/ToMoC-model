@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""eval_router — evaluate the from-scratch function router.
+
+Scores the DECISION QUALITY of the router, not just "did it call":
+  route_accuracy : gold function == predicted function (the routing decision)
+  well_formed    : call parses to valid JSON (or no-tool when gold=no-tool)
+  over_call      : predicted a tool when gold said answer_direct
+  under_call     : predicted none when gold said a tool
+  per_function   : accuracy per function name (router precision/recall)
+
+Greedy char-by-char generation from the trained scratch model. Every eval
+writes a FULL per-item JSONL to logs/ and logs summary metrics to the metrics
+store + MLflow.
+
+Usage:
+  python scripts/eval_router.py --model models/scratch/1 --data data/raw/cards.jsonl
+"""
+import argparse
+import json
+import os
+import sys
+import time
+import torch
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+sys.path.insert(0, ROOT)
+
+from tomac_common import build_prompt, parse_call
+from model_scratch import RouterModel, CharTokenizer
+from metrics import Metrics
+
+DEFAULT_DATA = os.path.join(ROOT, "data", "raw", "cards.jsonl")
+LOGS = os.path.join(ROOT, "logs")
+
+
+def load_model(model_path, device):
+    tok = CharTokenizer.load(os.path.join(model_path, "tokenizer.json"))
+    model = RouterModel.load(model_path, device=device).to(device)
+    model.eval()
+    return tok, model
+
+
+@torch.no_grad()
+def generate_one(tok, model, prompt, max_new=160, device="cpu", eos_id=0):
+    ids = torch.tensor([tok.encode(prompt)], dtype=torch.long, device=device)
+    gen = model.generate(ids, max_new=max_new, temperature=1.0, eos_id=eos_id)
+    out_ids = gen[0][len(ids[0]):].tolist()
+    return tok.decode(out_ids)
+
+
+def load_cards(path):
+    out = []
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                out.append(json.loads(line))
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default=os.path.join(ROOT, "models", "scratch", "1"))
+    ap.add_argument("--data", default=DEFAULT_DATA)
+    ap.add_argument("--max-new", type=int, default=160)
+    ap.add_argument("--limit", type=int, default=0, help="debug: cap cards")
+    args = ap.parse_args()
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    tok, model = load_model(args.model, device)
+    eos_id = tok.eos_id
+
+    cards = load_cards(args.data)
+    if args.limit:
+        cards = cards[:args.limit]
+
+    t0 = time.time()
+    n = len(cards)
+    correct = 0
+    well_formed = 0
+    over_call = 0
+    under_call = 0
+    per_fn = {}
+    rows = []
+    for c in cards:
+        prompt = build_prompt(c["q"])
+        raw = generate_one(tok, model, prompt, args.max_new, device, eos_id)
+        name, args_, wf, _ = parse_call(raw)
+        gold = c["name"]
+        gold_no_tool = (c.get("target") == c["q"]) or (gold == "answer_direct")
+        pred_no_tool = name is None
+
+        if (name == gold) or (gold_no_tool and pred_no_tool):
+            correct += 1
+            c_ok = True
+        else:
+            c_ok = False
+        if wf or (pred_no_tool and gold_no_tool):
+            well_formed += 1
+        if (not gold_no_tool) and pred_no_tool:
+            under_call += 1
+        if gold_no_tool and (not pred_no_tool):
+            over_call += 1
+        per_fn.setdefault(gold, [0, 0])
+        per_fn[gold][1] += 1
+        if name == gold:
+            per_fn[gold][0] += 1
+        rows.append({"q": c["q"], "gold": gold, "pred": name,
+                     "pred_args": args_, "well_formed": wf,
+                     "correct_route": c_ok, "raw": raw.strip()})
+    wall = time.time() - t0
+
+    os.makedirs(LOGS, exist_ok=True)
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    tag = os.path.basename(os.path.normpath(args.model))
+    jl = os.path.join(LOGS, f"eval_router_{tag}_{stamp}.jsonl")
+    with open(jl, "w", encoding="utf-8") as fh:
+        for r in rows:
+            fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+    route_acc = correct / n
+    wf_rate = well_formed / n
+    over = over_call / n
+    under = under_call / n
+
+    m = Metrics()
+    pid = m.new_pass(mode="eval", base_model="(none/random-init)",
+                     num_cards=n, walltime_s=round(wall, 1), status="evaluated")
+    # tag the (already-open, mirrored) MLflow run so eval runs are filterable
+    if m._mlf is not None:
+        m._mlf.set_tags({"from_scratch": True, "project": "tomac",
+                         "model": tag, "data": os.path.basename(args.data)})
+    m.log_metric(pid, "route_accuracy", round(route_acc, 4))
+    m.log_metric(pid, "well_formed", round(wf_rate, 4))
+    m.log_metric(pid, "over_call", round(over, 4))
+    m.log_metric(pid, "under_call", round(under, 4))
+    for fn, (ok, tot) in per_fn.items():
+        m.log_metric(pid, f"fn.{fn}", round(ok / tot, 4), detail=f"{ok}/{tot}")
+    m.log_meta(pid, "model", tag)
+    m.log_meta(pid, "data", os.path.basename(args.data))
+    m.log_meta(pid, "per_item_log", jl)
+    # log the full per-item JSONL as an MLflow artifact (auditable eval trail)
+    if m._mlf is not None:
+        m._mlf.log_artifact(jl)
+    m.summarize(pid)
+    m.cost_report()
+    m.close()
+
+    print(f"\n=== eval: {tag} ({n} cards, {wall:.1f}s) ===")
+    print(f"  route_accuracy : {route_acc:.4f}")
+    print(f"  well_formed    : {wf_rate:.4f}")
+    print(f"  over_call      : {over:.4f}")
+    print(f"  under_call     : {under:.4f}")
+    print("  per-function:")
+    for fn, (ok, tot) in sorted(per_fn.items()):
+        print(f"    {fn:14s} {ok/tot:.3f}  ({ok}/{tot})")
+    print(f"  per-item log   : {jl}")
+
+
+if __name__ == "__main__":
+    main()

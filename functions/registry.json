@@ -1,0 +1,98 @@
+{
+  "_meta": {
+    "description": "The router's KNOWLEDGE. Each function is a tool the tiny LLM can route to. Add a function here and it becomes routable with ZERO model code changes. Training/eval read this file; the live loop executes the matching handler in executors.py.",
+    "conventions": {
+      "name": "snake_case, maps to a handler in functions/executors.py",
+      "params": "ordered list of {name, type, required, desc}",
+      "examples": "gold (request -> args) pairs used to synth training cards",
+      "no_tool": "true means this function == 'answer directly, no tool needed'"
+    }
+  },
+  "functions": [
+    {
+      "name": "compute",
+      "category": "math",
+      "description": "Evaluate an arithmetic or numeric expression safely (no imports, no network). Use for any math the user asks about.",
+      "params": [
+        {"name": "expression", "type": "str", "required": true, "desc": "the math expression, e.g. \"48 - 5 + 20\" or \"(12 * 8) / 3\""}
+      ],
+      "examples": [
+        {"request": "What is 48 minus 5 plus 20?", "args": {"expression": "48 - 5 + 20"}},
+        {"request": "Calculate 12 times 8 divided by 3", "args": {"expression": "(12 * 8) / 3"}},
+        {"request": "What's 15% of 240?", "args": {"expression": "240 * 0.15"}},
+        {"request": "Add 1023 and 477 then divide by 2", "args": {"expression": "(1023 + 477) / 2"}},
+        {"request": "What is 7 squared?", "args": {"expression": "7 ** 2"}},
+        {"request": "Convert 3 hours to minutes", "args": {"expression": "3 * 60"}}
+      ]
+    },
+    {
+      "name": "get_time",
+      "category": "time",
+      "description": "Return the current local date/time. Optional timezone name (e.g. 'UTC', 'America/New_York').",
+      "params": [
+        {"name": "timezone", "type": "str", "required": false, "desc": "IANA tz name; omit for server local time"}
+      ],
+      "examples": [
+        {"request": "What time is it?", "args": {}},
+        {"request": "What's the current date and time in UTC?", "args": {"timezone": "UTC"}},
+        {"request": "Tell me the time in New York", "args": {"timezone": "America/New_York"}}
+      ]
+    },
+    {
+      "name": "unit_convert",
+      "category": "conversion",
+      "description": "Convert a value between units. Supports length (m,km,cm,mi,ft,in), mass (kg,g,lb,oz), and time (h,min,s,day).",
+      "params": [
+        {"name": "value", "type": "float", "required": true, "desc": "numeric value to convert"},
+        {"name": "from", "type": "str", "required": true, "desc": "source unit"},
+        {"name": "to", "type": "str", "required": true, "desc": "target unit"}
+      ],
+      "examples": [
+        {"request": "How many kilometers is 5 miles?", "args": {"value": 5, "from": "mi", "to": "km"}},
+        {"request": "Convert 100 kilograms to pounds", "args": {"value": 100, "from": "kg", "to": "lb"}},
+        {"request": "How many seconds in 3 hours?", "args": {"value": 3, "from": "h", "to": "s"}},
+        {"request": "What is 12 inches in centimeters?", "args": {"value": 12, "from": "in", "to": "cm"}}
+      ]
+    },
+    {
+      "name": "wiki_read",
+      "category": "knowledge",
+      "description": "Look up a fact from the local disk-backed vault (data/vault/<category>/<slug>.md). Use when the request asks for a stored fact, definition, or note.",
+      "params": [
+        {"name": "query", "type": "str", "required": true, "desc": "the thing to look up, verbatim-ish"},
+        {"name": "category", "type": "str", "required": false, "desc": "optional vault category to scope the search"}
+      ],
+      "examples": [
+        {"request": "What did I note about the homelab network topology?", "args": {"query": "homelab network topology"}},
+        {"request": "Remind me what the API key rotation policy is", "args": {"query": "API key rotation policy"}},
+        {"request": "Look up the definition of ToMoC in my notes", "args": {"query": "ToMoC", "category": "concepts"}}
+      ]
+    },
+    {
+      "name": "remind_me",
+      "category": "action",
+      "description": "Save a reminder to the local disk (data/reminders.md). Sovereign: writes are gated by default (proposed, human approves to commit).",
+      "params": [
+        {"name": "text", "type": "str", "required": true, "desc": "the reminder text"},
+        {"name": "when", "type": "str", "required": false, "desc": "when, free text, optional"}
+      ],
+      "examples": [
+        {"request": "Remind me to back up the NAS at midnight", "args": {"text": "back up the NAS", "when": "midnight"}},
+        {"request": "Note that I need to renew the domain in March", "args": {"text": "renew the domain", "when": "March"}}
+      ]
+    },
+    {
+      "name": "answer_direct",
+      "category": "none",
+      "description": "No tool needed. Use for chit-chat, opinions, explanations, or anything the model can answer from the prompt alone.",
+      "no_tool": true,
+      "params": [],
+      "examples": [
+        {"request": "Who are you?", "args": {}},
+        {"request": "Explain what a function router is in one sentence", "args": {}},
+        {"request": "Thanks, that helps!", "args": {}},
+        {"request": "What's your favorite color?", "args": {}}
+      ]
+    }
+  ]
+}

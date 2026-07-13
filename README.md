@@ -1,0 +1,206 @@
+# tomac — a tiny function-routing LLM (trained from scratch)
+
+> A *very small* LLM (trained **from random init — no pretrained base**) taught
+> to be a **smart router**: read a request, decide **which function to call and
+> with what arguments**, then let sovereign, disk-backed tools do the work. The
+> functions ARE its knowledge — capability scales by adding functions, not
+> parameters.
+
+> Cost to date: **$0.0000** across 0 GPU passes (0.00 GPU-hours) @ $0.14/kWh, ~90W over idle. Sovereignty metric vs API bills.
+
+**Status:** scaffolding done; v1 from-scratch training run **pending** (GPU
+paused for discussion). The thesis is proven in the sibling project `smol` (a
+360M model routing to 2 tools at ~99%); `tomac` generalizes that to *N* typed
+functions with JSON arguments — but trains its own weights from scratch rather
+than LoRA-ing a base.
+
+---
+
+## What it is, in one paragraph
+
+A normal LLM *is* a knowledge base — its smarts are baked into billions of
+weights. This project inverts that. We train a tiny causal LM to emit one
+structured call when a request needs a tool:
+
+```
+TOOL compute {"expression": "48 - 5 + 20"}
+TOOL unit_convert {"value": 5, "from": "mi", "to": "km"}
+TOOL answer_direct {}
+```
+
+…and to answer directly (no tool) otherwise. A separate, sovereign executor
+(`functions/executors.py`) actually runs the call. The model **decides**; the
+function **does**. Because the router only needs to choose *well*, it can stay
+tiny — and you grow its capability by registering a new function in
+`functions/registry.json`, with **zero model code changes**.
+
+---
+
+## Why a tiny model? (the thesis)
+
+| Approach | Params | Can it do math? | Can it look up your notes? | Cost |
+|----------|--------|-----------------|----------------------------|------|
+| big LLM | 70B+ | yes (in weights) | yes (in weights) | API $ / big GPU |
+| **tomac** | ~3M (from scratch) | routes to `compute` | routes to `wiki_read` | ~$0.01/pass on a P4 |
+
+A 360M model *cannot* do arithmetic on its own (the `smol` project measured
+**1.7%** on gsm8k). But it *can* learn "this is a math request → emit
+`TOOL compute`", and a 20-line sandboxed executor does the arithmetic perfectly.
+So we trade *model smarts* for *routing skill*. The result is a cheap, offline,
+sovereign assistant whose intelligence lives in functions, not weights.
+
+---
+
+## Repository layout
+
+```
+tomac/
+├── README.md                 # this file (homelabber guide)
+├── AGENTS.md                 # resume-point for AI/agent sessions
+├── functions/
+│   ├── registry.json         # ★ THE KNOWLEDGE: every routable function
+│   ├── registry.py           # load the registry
+│   └── executors.py          # the actual tool handlers (sovereign, sandboxed)
+├── scripts/
+│   ├── tomac_common.py       # shared cue + call parser (TRAIN==EVAL bytes)
+│   ├── build_cards.py        # synth router training data from the registry
+│   ├── train_router.py       # FROM-SCRATCH training (random init, no base)
+│   ├── eval_router.py        # routing-quality eval (route_acc, per-fn, ...)
+│   ├── router_server.py      # live loop: q -> call -> execute -> answer
+│   ├── model_scratch.py      # tiny char-level transformer (the router)
+│   ├── metrics.py            # SQLite ledger of every pass + cost
+│   ├── mlflow_tracker.py     # optional MLflow artifact/run tracking
+│   └── probe_env.py          # verify the env before spending GPU
+├── data/
+│   ├── raw/cards.jsonl       # generated training/eval cards
+│   ├── vault/                # disk-backed wiki (markdown notes)
+│   └── reminders.md          # gated reminder store
+├── models/                   # trained scratch checkpoints (gitignored)
+├── logs/                     # per-run + per-item JSONL (gitignored)
+├── benchmarks/passes.db      # metrics ledger (gitignored)
+└── wiki/                     # BUGS.md, JOURNAL.md, plans/
+```
+
+---
+
+## Homelabber quick start (recreate it yourself)
+
+### 1. Get a GPU box (any CUDA GPU works; the numbers below are from an 8 GB Tesla P4)
+
+```bash
+git clone git@github.com:jamesphenry/ToMoC-model.git
+cd tomac
+```
+
+### 2. Create the environment (uv, PEP 668 safe)
+
+```bash
+uv venv .venv --python 3.13
+source .venv/bin/activate
+# torch for your CUDA major version; cu121 shown
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install transformers peft trl datasets accelerate bitsandbytes
+uv pip install mlflow            # optional but recommended (run/asset tracking)
+```
+
+> **MLflow is optional.** If you skip it, the SQLite metrics ledger still records
+> every pass and cost. Set `MLFLOW_TRACKING_URI` (a local file store costs nothing)
+> to also track runs + adapter artifacts in MLflow.
+
+### 3. Synthesize training data from the registry
+
+The registry **is** the knowledge. Every function's examples become gold
+(request → call) pairs; chit-chat becomes "answer directly" negatives.
+
+```bash
+python scripts/build_cards.py
+```
+
+### 4. Verify the environment
+
+```bash
+python scripts/probe_env.py
+```
+
+It prints a go/no-go summary: torch+CUDA, the ML stack, the function registry,
+and a from-scratch model shape check (no base model needed).
+
+### 5. Train the router FROM SCRATCH
+
+No pretrained base — the model is a tiny char-level transformer trained from
+random init. The default is ~3M params; bump `--d-model` / `--n-layers` for a
+bigger model. Training to usable routing on a P4 takes minutes, not hours.
+
+```bash
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+python scripts/train_router.py --out models/scratch/1 --epochs 30
+```
+
+### 6. Evaluate routing quality
+
+```bash
+python scripts/eval_router.py --model models/scratch/1 --data data/raw/cards.jsonl
+```
+
+This prints `route_accuracy`, `well_formed`, `over_call`, `under_call`, and a
+per-function breakdown, and writes a full per-item JSONL to `logs/`. Every
+pass is logged to `benchmarks/passes.db` with its electricity cost.
+
+### 7. Run it live
+
+```bash
+python scripts/router_server.py --model models/scratch/1 --chat
+# or a one-shot:
+python scripts/router_server.py --model models/scratch/1 --ask "what is 48 - 5 + 20"
+```
+
+---
+
+## Add a new function (capability without retraining the architecture)
+
+1. Add an entry to `functions/registry.json` with a `name`, `category`,
+   `params`, and a few `examples` (`request` → `args`).
+2. Add a handler of the same name in `functions/executors.py` that takes `args`
+   and returns `{"ok": True, "result": ...}`.
+3. Re-run `build_cards.py` (your new examples become training data) and retrain
+   from scratch.
+
+That's it. The model learns to route to the new function from its examples; the
+executor gives it the actual capability. **No model code changes, no new params.**
+
+> Safety: compute runs in an AST-scanned, isolated subprocess (no imports / `open`
+> / dunders / network). Write handlers (`remind_me`) are **gated** — they return
+> a `proposed_write` and never mutate disk until a human approves. The model can
+> *propose*, never *poison*.
+
+---
+
+## Metrics, MLflow, and bugs
+
+- **Every training/eval pass** is logged to `benchmarks/passes.db` (metrics +
+  walltime + GPU mem + electricity cost) via `scripts/metrics.py`.
+- **MLflow** (optional) mirrors each run + logs the checkpoint dir as an artifact
+  when `MLFLOW_TRACKING_URI` is set. Inspect with `mlflow ui`.
+- **Bugs and hotfixes** live in `wiki/BUGS.md`. The running build narrative and
+  real numbers are in `wiki/JOURNAL.md`. Detailed phase plans are in
+  `wiki/plans/`.
+
+---
+
+## Roadmap (phased, KISS, baby-steps)
+
+- [x] **Phase 0 — foundations**: env, function registry as knowledge, executor handlers (sovereign + sandboxed), from-scratch architecture.
+- [x] **Phase 1 — router habit**: card synth from registry, FROM-SCRATCH train, routing-quality eval (route_acc / well_formed / per-fn).
+- [ ] **Phase 2 — multi-tool eval harness**: held-out requests across all functions; measure per-category routing precision/recall.
+- [ ] **Phase 3 — smallest viable model**: sweep d_model / n_layers (e.g. 128/4 → 512/8) on from-scratch routing; find the floor where routing quality collapses.
+- [ ] **Phase 4 — live assistant loop**: router_server as a homelab service (pi / daemon) dispatching real tools.
+- [ ] **Phase 5 — grow the function set**: weather, home-assistant, DNS/network probes, notes CRUD — capability without retraining the architecture.
+- [ ] **Phase 6 — self-extending registry**: model *proposes* new functions it can't route; human approves and implements the handler.
+
+See `wiki/plans/` for the detailed breakdown of each phase.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE). Author: James Henry <james.phenry@gmail.com>.

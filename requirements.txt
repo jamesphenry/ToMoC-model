@@ -1,0 +1,16 @@
+# tomac — pinned-ish requirements for the training/eval stack.
+# Install into a uv venv (PEP 668 safe): see README "Homelabber quick start".
+#
+# torch is installed separately against your CUDA index, e.g.:
+#   uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+# (cu121 shown; use cu118/cu124 to match your driver.)
+
+transformers>=4.44
+peft>=0.13
+trl>=0.12
+datasets>=3.0
+accelerate>=1.0
+bitsandbytes>=0.43
+mlflow>=2.15        # optional; metrics store works without it
+PyYAML>=6.0
+huggingface_hub>=0.25
