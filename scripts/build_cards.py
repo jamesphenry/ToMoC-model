@@ -129,7 +129,7 @@ def _aug_time(rng, n):
         else:
             forms = [f"Tell me the time in {city}", f"What time is it in {city}?",
                      f"Current time in {city}", f"What's the time in {city} right now?"]
-            out.append((rng.choice(forms), {"timezone": tz}))
+            out.append((rng.choice(forms), {"tz": tz}))
     return out
 
 
@@ -189,6 +189,10 @@ def main():
                     help="EXTRA compute cards (varied numbers) to strengthen the "
                          "weakest class — the tiny model under-fits digit "
                          "transcription + the TOOL cue on compute requests.")
+    ap.add_argument("--get-time-boost", type=int, default=0,
+                    help="EXTRA get_time cards (city/timezone variety) to fix the "
+                         "2nd-weakest class — also decouples the 'tz' arg token "
+                         "from the 'get_time' fn name (was 'timezone').")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--val-frac", type=float, default=0.0,
                     help="held-out fraction (stratified by class) for overfit "
@@ -243,6 +247,12 @@ def main():
         for q, a in _aug_compute(rng, args.compute_boost):
             cards.append({"q": q, "name": "compute", "args": a,
                           "target": target_for("compute", a)})
+
+    # get_time-specific boost: 2nd-weakest class (city/timezone variety).
+    if args.get_time_boost > 0:
+        for q, a in _aug_time(rng, args.get_time_boost):
+            cards.append({"q": q, "name": "get_time", "args": a,
+                          "target": target_for("get_time", a)})
 
     # ---- held-out val split (stratified by class) for overfit detection ----
     # Split the UNIQUE card set FIRST; THEN multiply train only. Dedupe by the

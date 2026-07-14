@@ -92,7 +92,7 @@ def compute(args: dict) -> dict:
 
 # ---------------------------------------------------------------- get_time
 def get_time(args: dict) -> dict:
-    tz = (args or {}).get("timezone")
+    tz = (args or {}).get("tz")
     try:
         if tz:
             from zoneinfo import ZoneInfo
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         ("compute", {"expression": "48 - 5 + 20"}),
         ("compute", {"expression": "bad^call"}),  # should fail safely
         ("get_time", {}),
-        ("get_time", {"timezone": "UTC"}),
+        ("get_time", {"tz": "UTC"}),
         ("unit_convert", {"value": 5, "from": "mi", "to": "km"}),
         ("wiki_read", {"query": "nonexistent thing xyz"}),
         ("remind_me", {"text": "test reminder", "when": "later"}),

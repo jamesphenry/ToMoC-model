@@ -30,12 +30,12 @@
       "category": "time",
       "description": "Return the current local date/time. Optional timezone name (e.g. 'UTC', 'America/New_York').",
       "params": [
-        {"name": "timezone", "type": "str", "required": false, "desc": "IANA tz name; omit for server local time"}
+        {"name": "tz", "type": "str", "required": false, "desc": "IANA tz name; omit for server local time"}
       ],
       "examples": [
         {"request": "What time is it?", "args": {}},
-        {"request": "What's the current date and time in UTC?", "args": {"timezone": "UTC"}},
-        {"request": "Tell me the time in New York", "args": {"timezone": "America/New_York"}}
+        {"request": "What's the current date and time in UTC?", "args": {"tz": "UTC"}},
+        {"request": "Tell me the time in New York", "args": {"tz": "America/New_York"}}
       ]
     },
     {
