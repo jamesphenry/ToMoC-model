@@ -30,9 +30,23 @@ CUE = (
 
 # Prompt = cue + the request. Train and eval build it the same way.
 PROMPT_TMPL = "{cue}Request: {q}\nRoute to a function:\n"
+# Multi-tool variant: the available tools are listed so the router learns to
+# DISAMBIGUATE (pick the right one when several are plausible). The trailing
+# "\nRoute to a function:\n" is identical to the single-tool prompt so the
+# generation head is unchanged — only the context differs.
+PROMPT_TMPL_WITH_TOOLS = "{cue}Request: {q}\nAvailable tools: {tools}\nRoute to a function:\n"
 
 
-def build_prompt(q: str) -> str:
+def build_prompt(q: str, tools=None) -> str:
+    """Build the router prompt. If `tools` (list[str]) is given, the available
+    functions are listed in the prompt so the model learns selection boundaries.
+
+    Single-tool cards (tools=None) produce the ORIGINAL byte-identical prompt,
+    so existing evals and the live server are unaffected.
+    """
+    if tools:
+        return PROMPT_TMPL_WITH_TOOLS.format(cue=CUE, q=q.strip(),
+                                             tools=", ".join(tools))
     return PROMPT_TMPL.format(cue=CUE, q=q.strip())
 
 

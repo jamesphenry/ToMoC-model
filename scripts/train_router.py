@@ -53,7 +53,7 @@ class CharDataset(Dataset):
                 if not line:
                     continue
                 c = json.loads(line)
-                prompt = build_prompt(c["q"])
+                prompt = build_prompt(c["q"], c.get("tools"))
                 target = c["target"].strip()
                 text = prompt + target + "\n"
                 ids = self.tok.encode(text)[:max_len]
@@ -106,7 +106,7 @@ def main():
     with open(args.data, encoding="utf-8") as fh:
         for line in fh:
             c = json.loads(line)
-            all_text += build_prompt(c["q"]) + c["target"] + "\n"
+            all_text += build_prompt(c["q"], c.get("tools")) + c["target"] + "\n"
     tok = CharTokenizer.from_text(all_text)
     print(f"vocab size: {len(tok)} chars")
 

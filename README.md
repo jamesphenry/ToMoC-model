@@ -6,13 +6,13 @@
 > functions ARE its knowledge — capability scales by adding functions, not
 > parameters.
 
-> Cost to date: **$0.0000** across 0 GPU passes (0.00 GPU-hours) @ $0.14/kWh, ~90W over idle. Sovereignty metric vs API bills.
+> Cost to date: **$0.0435** across 51 GPU passes (10.76 GPU-hours) @ $0.14/kWh, ~90W over idle. Sovereignty metric vs API bills.
 
-**Status:** scaffolding done; v1 from-scratch training run **pending** (GPU
-paused for discussion). The thesis is proven in the sibling project `smol` (a
-360M model routing to 2 tools at ~99%); `tomac` generalizes that to *N* typed
-functions with JSON arguments — but trains its own weights from scratch rather
-than LoRA-ing a base.
+**Status:** two trained from-scratch routers are the current candidates
+(see wiki/findings for the full train→eval→discuss story):
+- `baseline-100ep-8fn` — 8 functions, single-tool routing, **96.3%** route_acc, no disambiguation.
+- `baseline-100ep-mt2` — full-list needle-style disambiguation, **93.7%** single-tool + **100%** multi-tool gold_hit.
+Both train their own weights from random init (no base model). Ship decision pending.
 
 ---
 
@@ -67,9 +67,11 @@ tomac/
 │   ├── train_router.py       # FROM-SCRATCH training (random init, no base)
 │   ├── eval_router.py        # routing-quality eval (route_acc, per-fn, ...)
 │   ├── router_server.py      # live loop: q -> call -> execute -> answer
-│   ├── model_scratch.py      # tiny char-level transformer (the router)
-│   ├── metrics.py            # SQLite ledger of every pass + cost
-│   ├── wandb_tracker.py      # optional Weights & Biases tracking (self-hosted)
+│   ├── model_scratch.py       # tiny char-level transformer (the router)
+│   ├── build_multitool_cards.py # synth DISAMBIGUATION cards (full tool list)
+│   ├── eval_multitool.py      # score multi-tool gold_hit / in_set / out_of_set
+│   ├── metrics.py              # SQLite ledger of every pass + cost
+│   ├── wandb_tracker.py        # optional Weights & Biases tracking (self-hosted)
 │   └── probe_env.py          # verify the env before spending GPU
 ├── data/
 │   ├── raw/cards.jsonl       # generated training/eval cards
@@ -153,6 +155,27 @@ python scripts/router_server.py --model models/scratch/1 --chat
 # or a one-shot:
 python scripts/router_server.py --model models/scratch/1 --ask "what is 48 - 5 + 20"
 ```
+
+---
+
+## Optional — teach the router to DISAMBIGUATE (multi-tool)
+
+By default the router sees one request and emits one `TOOL` call. To teach it to
+*choose* the right tool when several are plausible (a selection boundary
+single-tool cards never teach), generate disambiguation cards where the prompt
+lists the full available-tool set but the gold is still a single tool:
+
+```bash
+python scripts/build_multitool_cards.py --out data/raw/multitool.jsonl --n 400
+cat data/raw/cards_train.jsonl data/raw/multitool.jsonl > data/raw/cards_train_mt.jsonl
+python scripts/train_router.py --out models/scratch/baseline-100ep-mt2 --epochs 100 --data data/raw/cards_train_mt.jsonl
+# score disambiguation separately from single-tool routing:
+python scripts/eval_multitool.py models/scratch/baseline-100ep-mt2 data/raw/multitool.jsonl
+```
+
+`eval_multitool.py` reports `gold_hit` (picked the right tool), `in_set`
+(valid choice), and `out_of_set` (a genuine disambiguation error). See
+`wiki/findings/2026-07-14-disambiguation-fixed.md` for the full A/B.
 
 ---
 

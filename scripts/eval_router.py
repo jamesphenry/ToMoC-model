@@ -122,7 +122,7 @@ def main():
 
     # Build all prompts, then batched greedy decode (keeps the P4 fed; eval is
     # reproducible because generate_batch is argmax, not sampled).
-    prompts = [build_prompt(c["q"]) for c in cards]
+    prompts = [build_prompt(c["q"], c.get("tools")) for c in cards]
     raws = generate_batch(tok, model, prompts, args.max_new, device, eos_id, bsz=32,
                           rep_penalty=args.rep_penalty)
 
