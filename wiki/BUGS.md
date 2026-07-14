@@ -63,5 +63,51 @@
 
 ---
 
+## BUG-006 — live server silently samples; eval is greedy (MISMATCH)
+- **Symptom:** `bash run.sh --ask "what is 3 + 4"` → `TOOOOL compute {"expression": "47 + 3"}` (wrong tool spelling + wrong math), scored as "answered directly". The demo looked broken; eval reported compute=0.975.
+- **Root cause:** `router_server.route_once` called `model.generate(..., temperature=1.0)` → **random sampling** on every live request. Eval used a *different* path (`generate_batch`, argmax). The two code paths decode differently, so eval numbers never matched what a user sees.
+- **Fix (model_scratch.generate):** `temperature <= 0` now forces `argmax` greedy decode (matches the eval path). `router_server.py` now passes `temperature=0.0` explicitly so the live path is deterministic + identical to eval.
+- **Guardrail:** there must be exactly ONE decode path used by both live and eval. Any future non-greedy decode is an experiment flag, never the default.
+
+---
+
+## BUG-007 — eval inflates route accuracy via rep_penalty the live path never applies
+- **Symptom:** eval reports compute name-acc 38/40 (95%) on `baseline-100ep-8fn`; the LIVE greedy path (rep_penalty=1.0) gives 23/40 (58%). `what is 3 + 4` → `29 + 23`; `12 / 33` → `12 / 3`. The model *loops* (`TOOOOL`, repeated chars) and emits garbage when not suppressed.
+- **Root cause:** `eval_router.generate_batch` defaults `rep_penalty=1.4` (line 101). That repetition penalty breaks the degenerate loop that the *under-trained* model falls into, masking the failure. The live server used the model's default `rep_penalty=1.0` (no suppression), so users hit the raw broken behavior. `route_accuracy` also only scores the **function name**, never the JSON args — so a `TOOOOL`/garbage-math call still counts as "correctly routed".
+- **Measurement (greedy, same 40 compute cards):** rep_penalty=1.0 → 23/40 name-acc, loops to 160 chars; rep_penalty=1.4 → 38/40. **~38pt inflation** between "what we score" and "what users see".
+- **Diagnosis / root cause (the real bug):** the model is **under-capacity + under-trained** for robust single-sequence generation. It learned the *statistical shape* of routing but not the output grammar reliably — it needs the crutch to not loop. This is the capacity wall: 192-d / 4-layer (~2.3M) is too small to hold 8 routing habits + arg transcription without looping on long-ish generations.
+- **Fix direction (in progress):** scale capacity (bigger d_model / n_layers) + train with EOS so the model learns to STOP instead of looping. Tracked as the `baseline-big` capacity A/B. Until then: live = eval decode (BUG-006), and README "96.3%" numbers are **name-only + crutch-inflated** and must be re-baselined honestly after the bigger model lands.
+- **Guardrail:** eval must use the SAME decode settings as the live server (no hidden rep_penalty). Add an **arg-correctness** metric (full `TOOL name {args}` match vs gold) alongside name-only `route_accuracy`, or the router can be "95% accurate" while handing `29+23` to compute.
+
+---
+
+## BUG-008 — wandb run silently no-ops when WANDB_API_URL unset; progress lost to W&B
+- **Symptom:** `baseline-big` training (pass-54) ran to completion locally and
+  logged to `benchmarks/passes.db`, but **never appeared in the self-hosted W&B**
+  (last visible run stayed `pass-53`). No error, no warning — the run "worked"
+  everywhere except the place the user watches.
+- **Root cause:** `scripts/wandb_tracker.py:81` only instantiates the real
+  tracker when `WANDB_API_URL` is set; otherwise `get_tracker()` returns a
+  silent `DummyTracker`. The training launch set `WANDB_MODE=offline` but never
+  `WANDB_API_URL`, so every `tracker.*` call was a no-op. Worse: with no real
+  run, there was no `offline-run-*` artifact either — so `wandb sync` could NOT
+  recover it after the fact. `WANDB_ENTITY` also defaults to None → a run that
+  DID go live would land under `user/tomac`, not `cravingpine/tomac` where the
+  dashboard is watched.
+- **Impact:** pass-54 exists in the local cost DB but is **missing from W&B** —
+  a real gap in the user's "everything in W&B" requirement. The run was killed
+  and restarted online (pass-55) so the data lands; pass-54 is documented as a
+  known missing run, not silently forgotten.
+- **Fix (in progress):** always launch training with the W&B env wired
+  (`WANDB_API_URL=http://192.168.0.6:8081`, `WANDB_ENTITY=cravingpine`, from
+  `~/.config/wandb/settings` + `~/.netrc`). Preferred fix: make `get_tracker()`
+  *warn loudly* (or `assert`) when it falls back to `DummyTracker` during a
+  real training pass, so a tracking failure is never silent again.
+- **Guardrail:** a training run that completes MUST have produced a W&B run OR
+  an `offline-run-*` dir; if neither, the launcher should fail loudly. Add this
+  check to the run wrapper so "no W&B" can never again be mistaken for "success".
+
+---
+
 *Add new bugs here as they're found. Each entry should be reproducible + have a
 verified fix. The honest bug log is what makes the project可信 (trustworthy).*
