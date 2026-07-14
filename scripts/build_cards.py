@@ -172,6 +172,9 @@ def main():
                     help="synth this many EXTRA varied cards per tool function "
                          "(template paraphrases). 0 = off (legacy behavior).")
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--val-frac", type=float, default=0.0,
+                    help="held-out fraction (stratified by class) for overfit "
+                         "detection; 0 = off (legacy single-file behavior)")
     args = ap.parse_args()
     random.seed(args.seed)
     rng = random.Random(args.seed)
@@ -217,7 +220,35 @@ def main():
             cards.append({"q": c, "name": "answer_direct", "args": {},
                           "target": target_for("answer_direct", {})})
 
-    # multiply (legacy: duplicates existing cards)
+    # ---- held-out val split (stratified by class) for overfit detection ----
+    # Split the UNIQUE card set FIRST; THEN multiply train only. Dedupe by the
+    # request TEXT (q) so no val string can appear in train (synthetic cards
+    # often repeat the same surface form; naive split leaks text overlaps and
+    # hides memorization).
+    val = []
+    if args.val_frac > 0:
+        from collections import defaultdict
+        seen = set()
+        unique = []
+        for c in cards:
+            if c["q"] in seen:
+                continue  # drop duplicate surface form entirely (goes to neither)
+            seen.add(c["q"])
+            unique.append(c)
+        by_class = defaultdict(list)
+        for c in unique:
+            by_class[c["name"]].append(c)
+        train_unique, val = [], []
+        for cls, items in by_class.items():
+            rng.shuffle(items)
+            k = max(1, round(len(items) * args.val_frac))
+            val.extend(items[:k])
+            train_unique.extend(items[k:])
+        rng.shuffle(train_unique)
+        cards = train_unique  # from here, cards = train only; val is sealed
+
+    # multiply (legacy: duplicates the TRAIN cards only when val-frac set,
+    # so val never gets duplicated into train)
     if args.multiply > 1:
         base = list(cards)
         for _ in range(args.multiply - 1):
@@ -225,6 +256,17 @@ def main():
 
     random.shuffle(cards)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
+
+    # when val-frac set, also write the sealed val file (train file is args.out)
+    if args.val_frac > 0:
+        out_dir = os.path.dirname(args.out)
+        val_path = os.path.join(out_dir, "cards_val.jsonl")
+        with open(val_path, "w", encoding="utf-8") as fh:
+            for c in val:
+                fh.write(json.dumps(c, ensure_ascii=False) + "\n")
+        print(f"  [split] {len(cards)} train -> {args.out}")
+        print(f"  [split] {len(val)} val   -> {val_path}")
+
     with open(args.out, "w", encoding="utf-8") as fh:
         for c in cards:
             fh.write(json.dumps(c, ensure_ascii=False) + "\n")
