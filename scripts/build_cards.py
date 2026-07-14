@@ -185,6 +185,10 @@ def main():
     ap.add_argument("--augment", type=int, default=0,
                     help="synth this many EXTRA varied cards per tool function "
                          "(template paraphrases). 0 = off (legacy behavior).")
+    ap.add_argument("--compute-boost", type=int, default=0,
+                    help="EXTRA compute cards (varied numbers) to strengthen the "
+                         "weakest class — the tiny model under-fits digit "
+                         "transcription + the TOOL cue on compute requests.")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--val-frac", type=float, default=0.0,
                     help="held-out fraction (stratified by class) for overfit "
@@ -233,6 +237,12 @@ def main():
             c = rng.choice(_CHITCHAT)
             cards.append({"q": c, "name": "answer_direct", "args": {},
                           "target": target_for("answer_direct", {})})
+
+    # compute-specific boost: the weakest class (digit transcription + cue).
+    if args.compute_boost > 0:
+        for q, a in _aug_compute(rng, args.compute_boost):
+            cards.append({"q": q, "name": "compute", "args": a,
+                          "target": target_for("compute", a)})
 
     # ---- held-out val split (stratified by class) for overfit detection ----
     # Split the UNIQUE card set FIRST; THEN multiply train only. Dedupe by the

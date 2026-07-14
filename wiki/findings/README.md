@@ -17,5 +17,6 @@ and the decision. Keep it brutal and short. Reproducibility > prose.
 - [2026-07-14 100ep-control](2026-07-14-100ep-control.md) — CONCLUSIVE: get_time 0%->66% on SAME 2.3M arch, 60->100ep only. Pure undertraining, NOT structural. Epochs>>capacity.
 - [2026-07-14 decode-rep-penalty](2026-07-14-decode-rep-penalty.md) — 60ep +rep1.2 = +4 route_acc but a TRADE (compute/unit_convert drop). Harness bug: per-fn `name==gold` undercounted answer_direct; FIXED to use correct_route.
 - [2026-07-14 get-time-inspect](2026-07-14-get-time-inspect.md) — answer_direct is 64% (summary miscounted via pred=None); get_time=0% is a `get_t_t_t` repetition collapse, NOT data starvation.
+- [2026-07-14 compute-boost](2026-07-14-compute-boost.md) — NEW OFFICIAL BASELINE: compute-boost=200 fixed weakest class (42%->86%). route_acc 94.4% full / 89% val, over_call 0.0%, under_call 4.7%. Parser TOL-hack was a FALSE START (reverted).
 - [2026-07-14 B arc RESOLVED](2026-07-14-b-arc-resolved.md) — over_call SOLVED (get_me hard-rejected, 9.6%->2.7%). Root cause of the "B broke routing" scare was a VAL-SPLIT VOLUME COLLAPSE bug, NOT B1/B2/augment. Fix: preserve train volume. Re-anchor technique saved us.
 - [2026-07-13 weave-blocked](2026-07-13-weave-blocked.md) — self-hosted wandb has no Weave subsystem; staying on run-based eval logging.
