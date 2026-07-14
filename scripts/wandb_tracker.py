@@ -68,22 +68,50 @@ class DummyTracker:
 _TRACKER = None
 
 
+def _warn_dummy(reason: str):
+    """Loud, un-missable warning that tracking is a no-op (see BUG-008).
+
+    A silent DummyTracker once let a full training run (pass-54) complete
+    WITHOUT ever reaching W&B. Never again: if the caller wanted tracking and
+    we can't provide it, say so on stderr. Set TOMAC_REQUIRE_WANDB=1 to make
+    this a hard error instead (recommended for real training launches).
+    """
+    msg = (
+        f"\n{'!' * 68}\n"
+        f"!! WANDB TRACKING DISABLED — this run will NOT appear in W&B.\n"
+        f"!! Reason: {reason}\n"
+        f"!! Fix: export WANDB_API_URL=<server> WANDB_ENTITY=<entity> and\n"
+        f"!!      `wandb login` (or set WANDB_API_KEY) before launching.\n"
+        f"!! (BUG-008: a silent no-op tracker previously lost pass-54.)\n"
+        f"{'!' * 68}\n"
+    )
+    print(msg, file=sys.stderr, flush=True)
+    if os.environ.get("TOMAC_REQUIRE_WANDB", "").strip().lower() in ("1", "true", "yes"):
+        raise RuntimeError(
+            "TOMAC_REQUIRE_WANDB is set but wandb tracking is unavailable: "
+            + reason
+        )
+
+
 def get_tracker():
     global _TRACKER
     if _TRACKER is not None:
         return _TRACKER
     try:
         import wandb  # noqa
-    except Exception:
+    except Exception as e:
+        _warn_dummy(f"wandb not importable ({type(e).__name__}: {e})")
         _TRACKER = DummyTracker()
         return _TRACKER
     # wandb installed; only go live if a server URL + entity are configured
     if not API_URL:
+        _warn_dummy("WANDB_API_URL is not set")
         _TRACKER = DummyTracker()
         return _TRACKER
     try:
         _TRACKER = _RealTracker(wandb)
-    except Exception:
+    except Exception as e:
+        _warn_dummy(f"_RealTracker init failed ({type(e).__name__}: {e})")
         _TRACKER = DummyTracker()
     return _TRACKER
 

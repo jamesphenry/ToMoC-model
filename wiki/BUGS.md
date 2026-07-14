@@ -98,11 +98,14 @@
   a real gap in the user's "everything in W&B" requirement. The run was killed
   and restarted online (pass-55) so the data lands; pass-54 is documented as a
   known missing run, not silently forgotten.
-- **Fix (in progress):** always launch training with the W&B env wired
-  (`WANDB_API_URL=http://192.168.0.6:8081`, `WANDB_ENTITY=cravingpine`, from
-  `~/.config/wandb/settings` + `~/.netrc`). Preferred fix: make `get_tracker()`
-  *warn loudly* (or `assert`) when it falls back to `DummyTracker` during a
-  real training pass, so a tracking failure is never silent again.
+- **Fix (DONE).** `wandb_tracker.get_tracker()` now calls `_warn_dummy(reason)`
+  on every fallback path (wandb not importable / `WANDB_API_URL` unset /
+  `_RealTracker` init failed), printing a loud stderr banner. Setting
+  `TOMAC_REQUIRE_WANDB=1` turns the fallback into a hard `RuntimeError` so real
+  training launches abort instead of running blind. Verified both paths.
+  Launches still need the env wired (`WANDB_API_URL=http://192.168.0.6:8081`,
+  `WANDB_ENTITY=cravingpine`); the warning/assert just makes a miss impossible
+  to overlook. Preferred launch: `TOMAC_REQUIRE_WANDB=1 ... train_router.py`.
 - **Guardrail:** a training run that completes MUST have produced a W&B run OR
   an `offline-run-*` dir; if neither, the launcher should fail loudly. Add this
   check to the run wrapper so "no W&B" can never again be mistaken for "success".
