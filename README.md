@@ -27,10 +27,16 @@ Both train their own weights from random init (no base model). Ship decision pen
 
 ## Why a tiny model? (the thesis)
 
-| Approach | Params | Can it do math? | Can it look up your notes? | Cost |
-|----------|--------|-----------------|----------------------------|------|
-| big LLM | 70B+ | yes (in weights) | yes (in weights) | API $ / big GPU |
-| **tomac** | ~3M (from scratch) | routes to `compute` | routes to `wiki_read` | ~$0.01/pass on a P4 |
+| Approach | Params | Can it do math? | Can it look up your notes? | Single-req latency | Cost |
+|----------|--------|-----------------|----------------------------|--------------------|------|
+| big LLM | 70B+ | yes (in weights) | yes (in weights) | ~0.5–2 s (decode + API) | API $ / big GPU |
+| **tomac** | ~3M (from scratch) | routes to `compute` | routes to `wiki_read` | **~240 ms** (P4, no net) | ~$0.01/pass on a P4 |
+
+> tomac's latency is **measured** on this repo's 8 GB Tesla P4 (single-request,
+> greedy decode, warmed up). The big-LLM figure is a typical-order estimate for
+> a local 7–13B model or an API round-trip — not measured here. Because tomac
+> only *routes* (it emits one short call, then a 20-line executor does the work),
+> there is no network hop and almost no decode — hence the sub-300 ms response.
 
 A 360M model *cannot* do arithmetic on its own (the `smol` project measured
 **1.7%** on gsm8k). But it *can* learn "this is a math request → emit
