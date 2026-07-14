@@ -84,6 +84,20 @@
       ]
     },
     {
+      "name": "web_search",
+      "category": "search",
+      "description": "Search the web via the local sovereign SearXNG instance (no external API). Use for current events, facts not in the vault, or anything time-sensitive the model can't answer from the prompt. Reads only.",
+      "params": [
+        {"name": "query", "type": "str", "required": true, "desc": "the search query"},
+        {"name": "limit", "type": "int", "required": false, "desc": "max results to return (default 5)"}
+      ],
+      "examples": [
+        {"request": "Search for the latest NVIDIA GPU benchmarks", "args": {"query": "latest NVIDIA GPU benchmarks"}},
+        {"request": "Look up Python 3.13 release notes on the web", "args": {"query": "Python 3.13 release notes"}},
+        {"request": "What does the internet say about Kubernetes vs Nomad?", "args": {"query": "Kubernetes vs Nomad", "limit": 3}}
+      ]
+    },
+    {
       "name": "remind_me",
       "category": "action",
       "description": "Save a reminder to the local disk (data/reminders.md). Sovereign: writes are gated by default (proposed, human approves to commit).",

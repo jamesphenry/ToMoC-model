@@ -194,6 +194,40 @@ def wiki_write(args: dict) -> dict:
             "path": rel, "entry": proposed, "verdict": "proposed_write"}
 
 
+# ------------------------------------------------------------- web_search
+import urllib.parse as _up
+import urllib.request as _ur
+
+def web_search(args: dict) -> dict:
+    """READ-only web search via the local sovereign SearXNG instance.
+
+    No external API, no keys — queries the homelab SearXNG container. Sovereign:
+    reads only, never mutates anything. URL is configurable via SEARXNG_URL so
+    the handler stays portable (default http://192.168.0.6:8080).
+    """
+    q = (args or {}).get("query")
+    if not q:
+        return {"ok": False, "error": "web_search needs 'query'"}
+    try:
+        limit = int((args or {}).get("limit") or 5)
+    except (TypeError, ValueError):
+        limit = 5
+    base = os.environ.get("SEARXNG_URL", "http://192.168.0.6:8080").rstrip("/")
+    url = f"{base}/search?q={_up.quote(q)}&format=json"
+    try:
+        req = _ur.Request(url, headers={"Accept": "application/json",
+                                        "User-Agent": "tomac-router/0.1"})
+        with _ur.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": f"searxng request failed: {e}", "verdict": "search_error"}
+    hits = []
+    for r in data.get("results", [])[:limit]:
+        hits.append({"title": r.get("title", ""), "url": r.get("url", ""),
+                     "content": (r.get("content") or "")[:280]})
+    return {"ok": True, "results": hits, "count": len(hits)}
+
+
 # ---------------------------------------------------------------- remind_me
 def remind_me(args: dict) -> dict:
     """GATED write. Propose only — never mutates disk. Human commits via CLI."""
@@ -214,6 +248,7 @@ _HANDLERS = {
     "unit_convert": unit_convert,
     "wiki_read": wiki_read,
     "wiki_write": wiki_write,
+    "web_search": web_search,
     "remind_me": remind_me,
 }
 
@@ -239,6 +274,7 @@ if __name__ == "__main__":
         ("unit_convert", {"value": 5, "from": "mi", "to": "km"}),
         ("wiki_read", {"query": "nonexistent thing xyz"}),
         ("wiki_write", {"title": "test note", "content": "hello vault"}),
+        ("web_search", {"query": "NVIDIA GPU benchmarks", "limit": 3}),
         ("remind_me", {"text": "test reminder", "when": "later"}),
         ("answer_direct", {}),
     ]:

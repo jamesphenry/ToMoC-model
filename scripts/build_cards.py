@@ -182,6 +182,36 @@ def _aug_wiki_write(rng, n):
     return out
 
 
+def _aug_web(rng, n):
+    out = []
+    queries = [
+        ("latest NVIDIA GPU benchmarks", "hardware"),
+        ("Python 3.13 release notes", "programming"),
+        ("Kubernetes vs Nomad comparison", "devops"),
+        ("best homelab router 2026", "homelab"),
+        ("ZFS vs Btrfs which is better", "storage"),
+        ("Tailscale vs WireGuard", "networking"),
+        ("latest CVE in OpenSSH", "security"),
+        ("Proxmox vs VMware alternatives", "virtualization"),
+        ("rust vs go for cli tools", "programming"),
+        ("current price of DDR5 memory", "hardware"),
+    ]
+    for _ in range(n):
+        q, topic = rng.choice(queries)
+        forms = [
+            f"Search for {q}",
+            f"Look up {q} on the web",
+            f"What does the internet say about {topic}?",
+            f"Search the web for {q}",
+            f"Find recent news about {topic}",
+        ]
+        a = {"query": q}
+        if rng.random() < 0.4:
+            a["limit"] = rng.choice([3, 5, 8])
+        out.append((rng.choice(forms), a))
+    return out
+
+
 def _aug_remind(rng, n):
     out = []
     tasks = ["back up the NAS", "renew the domain", "restart the router",
@@ -203,7 +233,8 @@ def _aug_remind(rng, n):
 
 _AUGMENTERS = {
     "compute": _aug_compute, "unit_convert": _aug_unit, "get_time": _aug_time,
-    "wiki_read": _aug_wiki, "wiki_write": _aug_wiki_write, "remind_me": _aug_remind,
+    "wiki_read": _aug_wiki, "wiki_write": _aug_wiki_write, "web_search": _aug_web,
+    "remind_me": _aug_remind,
 }
 
 
