@@ -4,6 +4,10 @@
 > is `wiki/journal/` (dated entries + README index); bugs in `wiki/bugs/`
 > (one file per bug + README index); detailed plans in `wiki/plans/`.
 > Per-pass metrics + cost in `benchmarks/passes.db`.
+>
+> **Agent memories & local instructions:** read the untracked, gitignored
+> `AGENTS.local.md` at the repo root at session start (working style, W&B/Ollama
+> config, repo conventions, identity, UI prefs). It is private/local-only.
 
 ## What this project is
 Train a *tiny* LLM (from **scratch** — random init, NO pretrained base) to be a

@@ -29,8 +29,13 @@ benchmarks/*.db
 # Env / secrets
 .env
 *.local
+# Local agent memories & instructions (private, per-machine)
+AGENTS.local.md
 
 # Editor / OS
 .vscode/
 .idea/
 .DS_Store
+
+# Local session recordings (record your own; gitignore to keep repo lean)
+screencasts/
