@@ -24,7 +24,7 @@ random-init floor. (No pretrained base; user directive 2026-07-13.)
        is 48 - 5 + 20"` → should route to `compute` and execute to 63.
 6. [ ] Sweep if needed: epochs 20/30/50, lr 1e-3/3e-3, d_model 128/256/512.
        Pick the smallest model that holds `route_accuracy` >= 0.95.
-7. [ ] Update `wiki/JOURNAL.md` pass table + `wiki/BUGS.md` with anything found.
+7. [ ] Add a dated entry under `wiki/journal/` + a `wiki/bugs/` file with anything found.
 
 ## Decisions / lean options
 - **Architecture:** default ~3M params (d_model=256, 6 layers, 8 heads). Bump
@@ -38,4 +38,4 @@ random-init floor. (No pretrained base; user directive 2026-07-13.)
 - Trained eval shows `route_accuracy` meaningfully above random and `over/under_call`
   near 0 on the held-out-style card split.
 - A live `--ask` routes + executes correctly end-to-end.
-- Numbers are in `wiki/JOURNAL.md` and `benchmarks/passes.db`.
+- Numbers are in `wiki/journal/` and `benchmarks/passes.db`.

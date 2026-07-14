@@ -8,7 +8,7 @@ The router LLM is trained + evaluated to emit a single, stable call format:
 Both train_router.py and eval_router.py MUST build prompts and parse calls
 with the helpers here so the cue string + call grammar stay BYTE-IDENTICAL
 between training and eval. (smol-lab BUG-class: a drifted cue silently kills
-the habit transfer; a strict parser hid well-formed calls — see wiki/BUGS.md.)
+the habit transfer; a strict parser hid well-formed calls — see wiki/bugs/.)
 
 Design notes:
 - JSON args (not ``name="x"``) so a function with N typed params is just one

@@ -17,11 +17,18 @@ Sovereignty metric vs API bills — every GPU pass is metered (walltime × real
 - Breakdown: training $0.0392 (19 passes, 9.72 GPU-h) · eval $0.0043 (32 passes, 1.04 GPU-h).
 - A single 100-epoch from-scratch train on an 8 GB Tesla P4 costs ~**$0.002–0.003** (≈30 min). A full eval is ~$0.0002.
 
-**Status:** two trained from-scratch routers are the current candidates
-(see wiki/findings for the full train→eval→discuss story):
-- `baseline-100ep-8fn` — 8 functions, single-tool routing, **96.3%** route_acc, no disambiguation.
-- `baseline-100ep-mt2` — full-list needle-style disambiguation, **93.7%** single-tool + **100%** multi-tool gold_hit.
-Both train their own weights from random init (no base model). Ship decision pending.
+**Status:** the current candidate router is being **scaled for capacity** — see
+[wiki/journal — 2026-07-14 capacity bump](wiki/journal/2026-07-14-capacity-bump.md). The previous
+`baseline-100ep-8fn` (2.3M params) scored 96.3% *name-only* route_acc, but
+live dogfooding exposed a degenerate looping habit (BUG-007): it needed a
+rep-penalty crutch to not emit garbage (`TOOOOL`, wrong math). The fix in
+progress is a bigger single-pass router, **`baseline-big` (10.9M params, ~4.7x)**,
+trained on the same data — a clean capacity A/B. Ship decision after honest eval
+(at the live-faithful decode, with an added arg-correctness metric).
+- `baseline-100ep-8fn` — 8 functions, single-tool, **96.3%** name-only (crutch-inflated; see BUG-007).
+- `baseline-big` — **10.9M params** (d_model 384 / 6 layers), training (capacity A/B vs 8fn).
+- `baseline-100ep-mt2` — full-list disambiguation, **93.7%** single + **100%** multi-tool gold_hit.
+All train from random init (no base model).
 
 ---
 
@@ -30,7 +37,7 @@ Both train their own weights from random init (no base model). Ship decision pen
 | Approach | Params | Can it do math? | Can it look up your notes? | Single-req latency | Cost |
 |----------|--------|-----------------|----------------------------|--------------------|------|
 | big LLM | 70B+ | yes (in weights) | yes (in weights) | ~0.5–2 s (decode + API) | API $ / big GPU |
-| **tomac** | ~3M (from scratch) | routes to `compute` | routes to `wiki_read` | **~240 ms** (P4, no net) | ~$0.01/pass on a P4 |
+| **tomac** | 2.3M → **10.9M** (from scratch) | routes to `compute` | routes to `wiki_read` | **~240 ms** (P4, no net) | ~$0.01/pass on a P4 |
 
 > tomac's latency is **measured** on this repo's 8 GB Tesla P4 (single-request,
 > greedy decode, warmed up). The big-LLM figure is a typical-order estimate for
@@ -93,7 +100,7 @@ tomac/
 ├── models/                   # trained scratch checkpoints (gitignored)
 ├── logs/                     # per-run + per-item JSONL (gitignored)
 ├── benchmarks/passes.db      # metrics ledger (gitignored)
-└── wiki/                     # BUGS.md, JOURNAL.md, plans/
+└── wiki/                     # bugs/, journal/, plans/ (dated + indexed)
 ```
 
 ---
@@ -144,8 +151,11 @@ and a from-scratch model shape check (no base model needed).
 ### 5. Train the router FROM SCRATCH
 
 No pretrained base — the model is a tiny char-level transformer trained from
-random init. The default is ~3M params; bump `--d-model` / `--n-layers` for a
-bigger model. Training to usable routing on a P4 takes minutes, not hours.
+random init. The model code defaults to ~3M params (d_model=256, 6 layers),
+but the **current trained floor is `baseline-big` = 10.9M** (d_model 384, 6
+layers) — bumped after live dogfooding showed ~2.3M loops/garbles under real
+decode (BUG-007, wiki/journal/2026-07-14-capacity-bump.md). Training to usable routing on a
+P4 takes minutes, not hours.
 
 ```bash
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -214,9 +224,9 @@ python scripts/eval_multitool.py models/scratch/baseline-100ep-mt2 data/raw/mult
   walltime + GPU mem + electricity cost) via `scripts/metrics.py`.
 - **W&B** (optional) mirrors each run + logs the checkpoint dir as an artifact
   when `WANDB_API_URL` + `WANDB_ENTITY` are set. Inspect in your self-hosted UI.
-- **Bugs and hotfixes** live in `wiki/BUGS.md`. The running build narrative and
-  real numbers are in `wiki/JOURNAL.md`. Detailed phase plans are in
-  `wiki/plans/`.
+- **Bugs and hotfixes** live in `wiki/bugs/` (one file per bug + index). The
+  running build narrative and real numbers are in `wiki/journal/` (dated entries
+  + index). Detailed phase plans are in `wiki/plans/`.
 
 ---
 

@@ -1,7 +1,8 @@
 # AGENTS.md — tomac checkpoint
 
 > Resume-point for an AI/agent session. Not a spec; the living build narrative
-> is `wiki/JOURNAL.md`; bugs in `wiki/BUGS.md`; detailed plans in `wiki/plans/`.
+> is `wiki/journal/` (dated entries + README index); bugs in `wiki/bugs/`
+> (one file per bug + README index); detailed plans in `wiki/plans/`.
 > Per-pass metrics + cost in `benchmarks/passes.db`.
 
 ## What this project is
@@ -32,7 +33,11 @@ dependency.
   CALL_OPEN_RE lesson from smol, applied to JSON). Train + eval MUST use these
   so the cue + grammar stay BYTE-IDENTICAL (drift silently kills habit transfer).
 - **From-scratch model** (`scripts/model_scratch.py`): char-level pre-norm
-  Transformer, random init. Default ~3M params (d_model=256, 6 layers, 8 heads).
+  Transformer, random init. Current floor = **~10.9M params** (`baseline-big`:
+  d_model=384, 6 layers, 6 heads) — bumped from the original ~2.3M (d192/4L)
+  after BUG-007 showed the smaller model loops/garbles under live decode. Model
+  defaults in `scripts/model_scratch.py` are still d_model=256/6L; training uses
+  `--d-model/--n-layers` per the capacity A/B (see wiki/journal/2026-07-14-capacity-bump.md).
   Vocab = chars seen in cards (+ CUE). Saves `model.pt` + `config.json` +
   `tokenizer.json`.
 - **Pipeline**: `build_cards.py` (synth from registry) → `train_router.py`
@@ -60,7 +65,7 @@ python scripts/eval_router.py --model models/scratch/1 --data data/raw/cards.jso
 python scripts/router_server.py --model models/scratch/1 --chat
 ```
 
-## Key conventions / gotchas (learned from smol — see wiki/BUGS.md)
+## Key conventions / gotchas (learned from smol — see wiki/bugs/)
 - **Byte-identical cue + parser.** `tomac_common.build_prompt` / `parse_call`
   are the contract. Never edit `CUE` without retraining; never fork the parser.
 - **Tolerant JSON parse.** A call truncated by `max_new_tokens` still yields the
@@ -86,6 +91,6 @@ Keep the README + wiki cost banner in sync via `scripts/sync_docs.py`.
 ## Commit / push
 - Branch `main`, remote `origin` = `git@github.com:jamesphenry/ToMoC-model.git`.
   Identity `James Henry <james.phenry@gmail.com>`.
-- Keep commits KISS. Update `wiki/JOURNAL.md` with each real run; keep `wiki/BUGS.md`
+- Keep commits KISS. Add a dated entry under `wiki/journal/` with each real run; keep `wiki/bugs/`
   as the failure log. Don't let the README cost banner drift (regenerate from
   `benchmarks/passes.db` via `scripts/sync_docs.py` when added).

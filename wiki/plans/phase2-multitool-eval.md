@@ -15,7 +15,7 @@ not just the training examples. Per-category precision/recall.
        and MLflow.
 4. [ ] If a function pair confuses the model, add a few "contrast" cards to
        `build_cards.py` (e.g. "<n> miles to km" vs "<n> * 1.6") and retrain.
-5. [ ] Document the confusion matrix in `wiki/JOURNAL.md`.
+5. [ ] Document the confusion matrix in `wiki/journal/` (dated entry).
 
 ## Lean vs moonshot
 - **Lean:** reworded examples only (fast, enough to see the floor).

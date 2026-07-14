@@ -20,7 +20,7 @@ architecture change, only registry + handler + retrain.
 3. [ ] `build_cards.py` picks it up automatically; retrain.
 4. [ ] Held-out eval (Phase 2 harness) confirms the new fn routes correctly and
        doesn't steal traffic from siblings.
-5. [ ] Log the new capability in `wiki/JOURNAL.md`.
+5. [ ] Log the new capability in `wiki/journal/` (dated entry).
 
 ## Definition of done
 - The model routes to >= 8 distinct functions, each with correct args, after a

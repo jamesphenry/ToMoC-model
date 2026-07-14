@@ -14,7 +14,7 @@ size sweep.
 ## Steps
 1. [ ] For each config, `train_router.py --out models/sweep/<tag> --epochs 30`
        with matching dims, then `eval_router.py --model models/sweep/<tag>`.
-2. [ ] Plot `route_accuracy` / `well_formed` vs param count in `wiki/JOURNAL.md`.
+2. [ ] Plot `route_accuracy` / `well_formed` vs param count in `wiki/journal/` (dated entry).
 3. [ ] Find the floor: the smallest config where `route_accuracy` >= 0.95 on the
        card split but degrades sharply below it.
 4. [ ] Lock the smallest config that holds quality as the DEFAULT in

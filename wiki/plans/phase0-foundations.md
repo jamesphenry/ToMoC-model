@@ -23,8 +23,8 @@ every run is tracked. No GPU work required to complete this phase.
 10. [x] `scripts/probe_env.py` — env verification.
 11. [x] `scripts/build_cards.py` — synth cards from registry (gold + chit-chat).
 12. [x] `scripts/train_router.py`, `eval_router.py`, `router_server.py` — pipeline.
-13. [x] Docs: `README.md` (homelabber), `AGENTS.md`, `wiki/BUGS.md`,
-        `wiki/JOURNAL.md`, `wiki/plans/*`.
+13. [x] Docs: `README.md` (homelabber), `AGENTS.md`, `wiki/bugs/`,
+        `wiki/journal/`, `wiki/plans/*`.
 14. [x] `uv` venv install (torch cu121 + stack + mlflow); `probe_env.py` passes.
 
 ## Definition of done
