@@ -52,7 +52,7 @@ def target_for(name: str, args: dict | None) -> str:
 _CALL_RE = re.compile(r"TOOL\s+([A-Za-z0-9_]+)", re.DOTALL)
 
 
-def parse_call(text: str):
+def parse_call(text: str, known_names=None):
     """Parse a model emission into (name, args, well_formed, raw).
 
     - name:        the function name, or None if no TOOL call found
@@ -64,6 +64,12 @@ def parse_call(text: str):
     STILL recover the function name (best-effort args) and return
     well_formed=False. The router's *routing* decision is scored even when its
     JSON is malformed — but a format slip can never masquerade as a clean call.
+
+    known_names (optional, set of valid registry fns): if the model emits a
+    name NOT in the registry, it is HARD-REJECTED -> (None, {}, False, text),
+    i.e. treated as "no tool" and never executable. Stops hallucinated fns
+    (e.g. `get_me`) from ever becoming a routed call. Training targets always
+    use valid names, so this never affects the training contract.
     """
     if text is None:
         return (None, {}, False, "")
@@ -71,6 +77,8 @@ def parse_call(text: str):
     if not m:
         return (None, {}, False, text)
     name = m.group(1)
+    if known_names is not None and name not in known_names:
+        return (None, {}, False, text)  # hallucinated fn: reject, never route
     rest = text[m.end():].lstrip()
     if not rest.startswith("{"):
         # no json object present -> a genuine no-arg call (e.g. TOOL get_time)

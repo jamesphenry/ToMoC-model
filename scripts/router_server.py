@@ -30,6 +30,8 @@ sys.path.insert(0, ROOT)
 from tomac_common import build_prompt, parse_call
 from model_scratch import RouterModel, CharTokenizer
 from functions import executors
+from functions.registry import names as _reg_names
+_REG_NAMES = set(_reg_names())
 
 DEFAULT_MODEL = os.path.join(ROOT, "models", "scratch", "1")
 MAX_NEW = 160
@@ -48,7 +50,7 @@ def route_once(tok, model, q, device, max_new=MAX_NEW):
     ids = torch.tensor([tok.encode(prompt)], dtype=torch.long, device=device)
     gen = model.generate(ids, max_new=max_new, temperature=1.0, eos_id=tok.eos_id)
     raw = tok.decode(gen[0][len(ids[0]):].tolist())
-    name, args, wf, _ = parse_call(raw)
+    name, args, wf, _ = parse_call(raw, known_names=_REG_NAMES)
     if name is None:
         return {"request": q, "routed": None, "raw": raw.strip(),
                 "result": "(model answered directly — no tool)"}

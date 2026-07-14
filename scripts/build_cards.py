@@ -36,6 +36,10 @@ from functions.registry import functions, names
 RAW = os.path.join(ROOT, "data", "raw", "cards.jsonl")
 
 # Generic no-tool chit-chat to broaden the "don't call" class beyond registry.
+# Kept VARIED across phrasings so the tiny model learns the no-tool BOUNDARY,
+# not a keyword. The "Good morning/night", "meaning of life", "what can you do"
+# forms below are exactly the ones the 100ep model misrouted to tools — more
+# paraphrase variety in those neighborhoods is the B1 fix for over_call.
 _CHITCHAT = [
     "Who are you?", "What's your name?", "Hi there!", "Thanks, that helps!",
     "Good morning", "Tell me a joke", "How are you today?",
@@ -46,6 +50,16 @@ _CHITCHAT = [
     "Good night", "See you tomorrow", "You're awesome", "What can you do?",
     "Tell me something interesting", "How's it going?", "Nice work!",
     "What's the meaning of life?", "Do you like music?", "Hello!",
+    # --- B1: expanded no-tool variety (greetings / philosophy / meta / thanks) ---
+    "Good evening", "Hey buddy", "Morning!", "G'day",
+    "What do you think about the universe?", "Is there an afterlife?",
+    "Do you believe in fate?", "Why do we dream?",
+    "What's the point of it all?", "How should I live my life?",
+    "That really helped, appreciate it", "Cheers for that",
+    "You're a clever little router", "I'm impressed",
+    "So what are you capable of?", "How do you work?",
+    "Can you do anything useful?", "What are your limits?",
+    "Just thinking out loud here", "I'm bored, entertain me",
 ]
 
 # ---- template banks: genuine paraphrase VARIETY (not duplicate strings) ----
@@ -245,7 +259,12 @@ def main():
             val.extend(items[:k])
             train_unique.extend(items[k:])
         rng.shuffle(train_unique)
-        cards = train_unique  # from here, cards = train only; val is sealed
+        # Seal val by q; keep ALL train cards whose q is in train-unique
+        # (preserves multiply/augment volume — do NOT collapse to one card
+        # per q, or the train set shrinks and the model underfits). Val
+        # leakage stays 0 because val q's are excluded from train_qs.
+        train_qs = {c["q"] for c in train_unique}
+        cards = [c for c in cards if c["q"] in train_qs]
 
     # multiply (legacy: duplicates the TRAIN cards only when val-frac set,
     # so val never gets duplicated into train)

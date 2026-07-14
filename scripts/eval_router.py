@@ -30,6 +30,8 @@ sys.path.insert(0, ROOT)
 from tomac_common import build_prompt, parse_call
 from model_scratch import RouterModel, CharTokenizer
 from metrics import Metrics
+from functions.registry import names as _reg_names
+_REG_NAMES = set(_reg_names())
 
 DEFAULT_DATA = os.path.join(ROOT, "data", "raw", "cards.jsonl")
 LOGS = os.path.join(ROOT, "logs")
@@ -125,7 +127,7 @@ def main():
                           rep_penalty=args.rep_penalty)
 
     for c, raw in zip(cards, raws):
-        name, args_, wf, _ = parse_call(raw)
+        name, args_, wf, _ = parse_call(raw, known_names=set(_REG_NAMES))
         gold = c["name"]
         gold_no_tool = (c.get("target") == c["q"]) or (gold == "answer_direct")
         pred_no_tool = name is None
