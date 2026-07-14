@@ -43,7 +43,124 @@ _CHITCHAT = [
     "Why is the sky blue?", "What is the capital of France?",
     "What's your favorite color?", "Can you help me think through a problem?",
     "That makes sense, thank you.", "lol nice",
+    "Good night", "See you tomorrow", "You're awesome", "What can you do?",
+    "Tell me something interesting", "How's it going?", "Nice work!",
+    "What's the meaning of life?", "Do you like music?", "Hello!",
 ]
+
+# ---- template banks: genuine paraphrase VARIETY (not duplicate strings) ----
+# Each yields (request, args) with args correct for target_for(). Randomized so
+# the char model sees many surface forms of the same routing decision.
+
+_NUM_WORDS = {2: "two", 3: "three", 5: "five", 7: "seven", 8: "eight",
+              9: "nine", 12: "twelve", 15: "fifteen", 20: "twenty"}
+
+
+def _aug_compute(rng, n):
+    out = []
+    ops = [("plus", "+"), ("minus", "-"), ("times", "*"), ("divided by", "/")]
+    for _ in range(n):
+        a, b = rng.randint(2, 99), rng.randint(2, 40)
+        word, sym = rng.choice(ops)
+        expr = f"{a} {sym} {b}"
+        forms = [
+            f"What is {a} {word} {b}?",
+            f"Calculate {a} {word} {b}",
+            f"Compute {a} {sym} {b}",
+            f"What's {a} {word} {b}?",
+            f"Can you work out {a} {word} {b}?",
+        ]
+        if sym == "*" and rng.random() < 0.4:
+            pct = rng.choice([5, 10, 15, 20, 25, 50])
+            base = rng.randint(20, 500)
+            out.append((f"What's {pct}% of {base}?",
+                        {"expression": f"{base} * {pct/100}"}))
+            continue
+        out.append((rng.choice(forms), {"expression": expr}))
+    return out
+
+
+def _aug_unit(rng, n):
+    out = []
+    pairs = [("mi", "km", "miles", "kilometers"), ("km", "mi", "kilometers", "miles"),
+             ("kg", "lb", "kilograms", "pounds"), ("lb", "kg", "pounds", "kilograms"),
+             ("in", "cm", "inches", "centimeters"), ("ft", "m", "feet", "meters"),
+             ("h", "s", "hours", "seconds"), ("h", "min", "hours", "minutes"),
+             ("g", "oz", "grams", "ounces"), ("day", "h", "days", "hours")]
+    for _ in range(n):
+        fu, tu, fw, tw = rng.choice(pairs)
+        v = rng.choice([1, 2, 3, 5, 10, 12, 25, 50, 100, 250])
+        forms = [
+            f"How many {tw} is {v} {fw}?",
+            f"Convert {v} {fw} to {tw}",
+            f"What is {v} {fw} in {tw}?",
+            f"{v} {fw} to {tw}",
+            f"How many {tw} in {v} {fw}?",
+        ]
+        out.append((rng.choice(forms), {"value": v, "from": fu, "to": tu}))
+    return out
+
+
+def _aug_time(rng, n):
+    out = []
+    zones = [(None, None), ("UTC", "UTC"), ("America/New_York", "New York"),
+             ("Europe/London", "London"), ("Asia/Tokyo", "Tokyo"),
+             ("America/Los_Angeles", "Los Angeles"), ("Australia/Sydney", "Sydney")]
+    for _ in range(n):
+        tz, city = rng.choice(zones)
+        if tz is None:
+            forms = ["What time is it?", "What's the time?", "Tell me the current time",
+                     "What is the time right now?", "Give me the time"]
+            out.append((rng.choice(forms), {}))
+        else:
+            forms = [f"Tell me the time in {city}", f"What time is it in {city}?",
+                     f"Current time in {city}", f"What's the time in {city} right now?"]
+            out.append((rng.choice(forms), {"timezone": tz}))
+    return out
+
+
+def _aug_wiki(rng, n):
+    out = []
+    topics = ["homelab network topology", "API key rotation policy", "ToMoC",
+              "backup schedule", "the DNS setup", "my SSH config notes",
+              "the GPU server specs", "docker compose conventions",
+              "the router firmware version", "my VLAN plan"]
+    for _ in range(n):
+        t = rng.choice(topics)
+        forms = [
+            f"What did I note about {t}?",
+            f"Look up {t} in my notes",
+            f"Remind me what the {t} is",
+            f"Find my notes on {t}",
+            f"What do my notes say about {t}?",
+        ]
+        out.append((rng.choice(forms), {"query": t}))
+    return out
+
+
+def _aug_remind(rng, n):
+    out = []
+    tasks = ["back up the NAS", "renew the domain", "restart the router",
+             "update the firewall rules", "pay the server bill",
+             "check the UPS battery", "rotate the API keys", "prune old snapshots"]
+    whens = ["midnight", "tomorrow", "next week", "March", "Friday",
+             "in an hour", "tonight", "on the 1st"]
+    for _ in range(n):
+        task, when = rng.choice(tasks), rng.choice(whens)
+        forms = [
+            (f"Remind me to {task} at {when}", {"text": task, "when": when}),
+            (f"Remind me to {task}", {"text": task}),
+            (f"Note that I need to {task} in {when}", {"text": task, "when": when}),
+            (f"Set a reminder to {task} {when}", {"text": task, "when": when}),
+        ]
+        out.append(rng.choice(forms))
+    return out
+
+
+_AUGMENTERS = {
+    "compute": _aug_compute, "unit_convert": _aug_unit, "get_time": _aug_time,
+    "wiki_read": _aug_wiki, "remind_me": _aug_remind,
+}
 
 
 def main():
@@ -51,9 +168,13 @@ def main():
     ap.add_argument("--out", default=RAW)
     ap.add_argument("--multiply", type=int, default=3,
                     help="repeat each gold example this many times (shuffled)")
+    ap.add_argument("--augment", type=int, default=0,
+                    help="synth this many EXTRA varied cards per tool function "
+                         "(template paraphrases). 0 = off (legacy behavior).")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     random.seed(args.seed)
+    rng = random.Random(args.seed)
 
     fns = functions()
     if not fns:
@@ -64,22 +185,39 @@ def main():
         name = f["name"]
         exs = f.get("examples", [])
         if f.get("no_tool"):
-            # negative class: answer directly. emit a plain target (no TOOL call)
+            # negative class: answer directly. Emit the SAME grammar as a tool
+            # call (TOOL answer_direct {}) so the model learns a distinct,
+            # learnable "no external tool needed" signal. Without this the model
+            # has no way to say "do nothing" and over-calls a tool on every
+            # no-tool card (Run 2b: answer_direct = 0/328).
             for e in exs:
                 cards.append({"q": e["request"], "name": name, "args": {},
-                              "target": e["request"]})
+                              "target": target_for(name, {})})
         else:
             for e in exs:
                 a = e.get("args", {})
                 cards.append({"q": e["request"], "name": name, "args": a,
                               "target": target_for(name, a)})
 
-    # augment with generic chit-chat (no-tool)
+    # augment with generic chit-chat (no-tool) — same grammar as a tool call
     for c in _CHITCHAT:
         cards.append({"q": c, "name": "answer_direct", "args": {},
-                      "target": c})
+                      "target": target_for("answer_direct", {})})
 
-    # multiply
+    # ---- template paraphrase augmentation (genuine variety) ----
+    if args.augment > 0:
+        for name, augf in _AUGMENTERS.items():
+            for q, a in augf(rng, args.augment):
+                cards.append({"q": q, "name": name, "args": a,
+                              "target": target_for(name, a)})
+        # keep the no-tool class balanced with the tool classes
+        n_notool = args.augment * len(_AUGMENTERS) // 2
+        for _ in range(n_notool):
+            c = rng.choice(_CHITCHAT)
+            cards.append({"q": c, "name": "answer_direct", "args": {},
+                          "target": target_for("answer_direct", {})})
+
+    # multiply (legacy: duplicates existing cards)
     if args.multiply > 1:
         base = list(cards)
         for _ in range(args.multiply - 1):

@@ -7,7 +7,7 @@ One SQLite file at benchmarks/passes.db. Three tables:
   pass_meta    free-form key/value (git_commit, data_hash, notes...)
 
 KISS: stdlib sqlite3 only. Optionally mirrors every pass to MLflow
-(see mlflow_tracker.py) when MLFLOW_TRACKING_URI is set / mlflow importable.
+(see wandb_tracker.py) when WANDB_API_URL is set / wandb importable.
 
 The README cost banner + runs.md Totals are regenerated from this DB by
 scripts/sync_docs.py, so the docs can never drift from the real numbers.
@@ -35,19 +35,19 @@ DEFAULT_GPU_WATTS = 90    # P4 draws ~90W over server idle during a GPU pass
 
 
 class Metrics:
-    def __init__(self, path: str = DB_PATH, mlflow: bool = True):
+    def __init__(self, path: str = DB_PATH, wandb: bool = True):
         self.path = os.path.abspath(path)
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self._init()
-        self._mlf = None
-        if mlflow:
+        self._wb = None
+        if wandb:
             try:
-                from mlflow_tracker import get_tracker
-                self._mlf = get_tracker()
+                from wandb_tracker import get_tracker
+                self._wb = get_tracker()
             except Exception:
-                self._mlf = None
+                self._wb = None
 
     def _init(self):
         self.conn.executescript(
@@ -141,9 +141,9 @@ class Metrics:
             f"INSERT INTO passes ({keys}) VALUES ({ph})", tuple(f.values()))
         self.conn.commit()
         pid = cur.lastrowid
-        # mirror to mlflow
-        if self._mlf is not None:
-            self._mlf.start_run(pid, f)
+        # mirror to wandb
+        if self._wb is not None:
+            self._wb.start_run(pid, f)
         return pid
 
     def log_metric(self, pass_id: int, metric: str, value, detail: str = None):
@@ -151,16 +151,16 @@ class Metrics:
             "INSERT INTO pass_metrics (pass_id, metric, value, detail) VALUES (?,?,?,?)",
             (pass_id, metric, value, detail))
         self.conn.commit()
-        if self._mlf is not None:
-            self._mlf.log_metric(metric, value, detail)
+        if self._wb is not None:
+            self._wb.log_metric(metric, value, detail)
 
     def log_meta(self, pass_id: int, key: str, value: str):
         self.conn.execute(
             "INSERT INTO pass_meta (pass_id, key, value) VALUES (?,?,?)",
             (pass_id, key, str(value)))
         self.conn.commit()
-        if self._mlf is not None:
-            self._mlf.log_param(key, value)
+        if self._wb is not None:
+            self._wb.log_param(key, value)
 
     def summarize(self, pass_id: int = None):
         if pass_id is None:
@@ -214,14 +214,14 @@ class Metrics:
                 print(f"    {mode:6s}: ${t:.4f}  ({m} passes, {mwt/3600:.3f} GPU-h)")
 
     def close(self):
-        if self._mlf is not None:
-            self._mlf.end_run()
+        if self._wb is not None:
+            self._wb.end_run()
         self.conn.close()
 
     @staticmethod
     def banner_line():
         """Return (cost_usd, n_passes, gpu_hours) for the README banner."""
-        m = Metrics(mlflow=False)
+        m = Metrics(wandb=False)
         t, n, wt = m.total_cost()
         m.close()
         return t, n, wt / 3600.0
@@ -230,7 +230,7 @@ class Metrics:
 if __name__ == "__main__":
     import tempfile, os as _os
     tmp = tempfile.mktemp(suffix=".db")
-    m = Metrics(tmp, mlflow=False)
+    m = Metrics(tmp, wandb=False)
     pid = m.new_pass(mode="eval", base_model="smollm-360m", num_cards=120,
                      walltime_s=300, gpu_watts=90)
     for k, v in [("route_accuracy", 0.97), ("well_formed", 0.99),

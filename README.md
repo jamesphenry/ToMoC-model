@@ -69,7 +69,7 @@ tomac/
 │   ├── router_server.py      # live loop: q -> call -> execute -> answer
 │   ├── model_scratch.py      # tiny char-level transformer (the router)
 │   ├── metrics.py            # SQLite ledger of every pass + cost
-│   ├── mlflow_tracker.py     # optional MLflow artifact/run tracking
+│   ├── wandb_tracker.py      # optional Weights & Biases tracking (self-hosted)
 │   └── probe_env.py          # verify the env before spending GPU
 ├── data/
 │   ├── raw/cards.jsonl       # generated training/eval cards
@@ -100,12 +100,12 @@ source .venv/bin/activate
 # torch for your CUDA major version; cu121 shown
 uv pip install torch --index-url https://download.pytorch.org/whl/cu121
 uv pip install transformers peft trl datasets accelerate bitsandbytes
-uv pip install mlflow            # optional but recommended (run/asset tracking)
+uv pip install wandb             # optional but recommended (run/asset tracking, self-hosted)
 ```
 
-> **MLflow is optional.** If you skip it, the SQLite metrics ledger still records
-> every pass and cost. Set `MLFLOW_TRACKING_URI` (a local file store costs nothing)
-> to also track runs + adapter artifacts in MLflow.
+> **W&B is optional.** If you skip it, the SQLite metrics ledger still records
+> every pass and cost. Set `WANDB_API_URL` + `WANDB_ENTITY` (your self-hosted
+> W&B server) to also track runs + checkpoints in Weights & Biases.
 
 ### 3. Synthesize training data from the registry
 
@@ -179,8 +179,8 @@ executor gives it the actual capability. **No model code changes, no new params.
 
 - **Every training/eval pass** is logged to `benchmarks/passes.db` (metrics +
   walltime + GPU mem + electricity cost) via `scripts/metrics.py`.
-- **MLflow** (optional) mirrors each run + logs the checkpoint dir as an artifact
-  when `MLFLOW_TRACKING_URI` is set. Inspect with `mlflow ui`.
+- **W&B** (optional) mirrors each run + logs the checkpoint dir as an artifact
+  when `WANDB_API_URL` + `WANDB_ENTITY` are set. Inspect in your self-hosted UI.
 - **Bugs and hotfixes** live in `wiki/BUGS.md`. The running build narrative and
   real numbers are in `wiki/JOURNAL.md`. Detailed phase plans are in
   `wiki/plans/`.

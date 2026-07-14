@@ -46,13 +46,13 @@ def main():
         except Exception as e:
             line(mod, False, str(e))
 
-    # mlflow (optional)
+    # wandb (optional — self-hosted server container; see wandb_tracker.py)
     try:
-        import mlflow
-        uri = os.environ.get("MLFLOW_TRACKING_URI", "(default local mlruns)")
-        line("mlflow", True, f"{mlflow.__version__}  tracking={uri}")
+        import wandb
+        uri = os.environ.get("WANDB_API_URL", "(not configured)")
+        line("wandb", True, f"{wandb.__version__}  server={uri}")
     except Exception:
-        line("mlflow", False, "not installed (optional; metrics store still works)")
+        line("wandb", False, "not installed (optional; metrics store still works)")
 
     # registry
     try:

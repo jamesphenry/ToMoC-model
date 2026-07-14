@@ -18,6 +18,10 @@ mlruns/
 mlartifacts/
 mlflow.db
 runs/
+wandb/
+
+# Generated data (regenerate via build_cards.py / build_multitool_cards.py)
+data/raw/*.jsonl
 
 # Local metrics store (regenerated from runs; summary lives in wiki/)
 benchmarks/*.db

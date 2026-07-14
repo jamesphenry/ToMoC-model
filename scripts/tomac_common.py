@@ -37,10 +37,14 @@ def build_prompt(q: str) -> str:
 
 
 def target_for(name: str, args: dict | None) -> str:
-    """Training target string for a (function, args) gold pair."""
+    """Training target string for a (function, args) gold pair.
+
+    A trailing newline is the EOS token (CharTokenizer.eos_id == '\\n'), so the
+    model learns to STOP after emitting the call. Without it the model never
+    emits EOS and generation burns the full max_new every time."""
     if not args:
-        return f"TOOL {name} {{}}"
-    return f"TOOL {name} {json.dumps(args, ensure_ascii=False)}"
+        return f"TOOL {name} {{}}\n"
+    return f"TOOL {name} {json.dumps(args, ensure_ascii=False)}\n"
 
 
 # Tolerant call regex: capture ONLY the function name. JSON is parsed

@@ -50,6 +50,37 @@ def generate_one(tok, model, prompt, max_new=160, device="cpu", eos_id=0):
     return tok.decode(out_ids)
 
 
+@torch.no_grad()
+def generate_batch(tok, model, prompts, max_new=160, device="cpu", eos_id=0,
+                   bsz=32, rep_penalty=1.0):
+    """Greedy batched decode. Returns one decoded suffix per prompt.
+
+    Groups prompts by LENGTH so each batch is equal-length (no padding — padding
+    would shift the causal context and change routes). Greedy (argmax) so eval
+    metrics are reproducible. Keeps the P4 fed (single-seq left it ~40% busy).
+    rep_penalty: forwarded to model.generate_batch to break degenerate loops."""
+    encs = [tok.encode(p) for p in prompts]
+    # group indices by encoded length to avoid padding
+    by_len = {}
+    for i, e in enumerate(encs):
+        by_len.setdefault(len(e), []).append(i)
+
+    out = [None] * len(prompts)
+    for _, idxs in by_len.items():
+        chunk = [encs[i] for i in idxs]
+        for s in range(0, len(chunk), bsz):
+            sub = chunk[s:s + bsz]
+            ids = torch.tensor(sub, dtype=torch.long, device=device)
+            gen = model.generate_batch(ids, max_new=max_new, eos_id=eos_id,
+                                       rep_penalty=rep_penalty)
+            for k, j in enumerate(idxs[s:s + bsz]):
+                suffix = gen[k][len(sub[k]):].tolist()
+                if eos_id in suffix:
+                    suffix = suffix[:suffix.index(eos_id)]
+                out[j] = tok.decode(suffix)
+    return out
+
+
 def load_cards(path):
     out = []
     with open(path, encoding="utf-8") as fh:
@@ -65,6 +96,8 @@ def main():
     ap.add_argument("--model", default=os.path.join(ROOT, "models", "scratch", "1"))
     ap.add_argument("--data", default=DEFAULT_DATA)
     ap.add_argument("--max-new", type=int, default=160)
+    ap.add_argument("--rep-penalty", type=float, default=1.4,
+                    help="repetition penalty (>1 suppresses recent tokens; breaks mememe loops)")
     ap.add_argument("--limit", type=int, default=0, help="debug: cap cards")
     args = ap.parse_args()
 
@@ -84,9 +117,14 @@ def main():
     under_call = 0
     per_fn = {}
     rows = []
-    for c in cards:
-        prompt = build_prompt(c["q"])
-        raw = generate_one(tok, model, prompt, args.max_new, device, eos_id)
+
+    # Build all prompts, then batched greedy decode (keeps the P4 fed; eval is
+    # reproducible because generate_batch is argmax, not sampled).
+    prompts = [build_prompt(c["q"]) for c in cards]
+    raws = generate_batch(tok, model, prompts, args.max_new, device, eos_id, bsz=32,
+                          rep_penalty=args.rep_penalty)
+
+    for c, raw in zip(cards, raws):
         name, args_, wf, _ = parse_call(raw)
         gold = c["name"]
         gold_no_tool = (c.get("target") == c["q"]) or (gold == "answer_direct")
@@ -105,7 +143,7 @@ def main():
             over_call += 1
         per_fn.setdefault(gold, [0, 0])
         per_fn[gold][1] += 1
-        if name == gold:
+        if c_ok:  # correct_route already handles gold_no_tool && pred_no_tool
             per_fn[gold][0] += 1
         rows.append({"q": c["q"], "gold": gold, "pred": name,
                      "pred_args": args_, "well_formed": wf,
@@ -128,10 +166,10 @@ def main():
     m = Metrics()
     pid = m.new_pass(mode="eval", base_model="(none/random-init)",
                      num_cards=n, walltime_s=round(wall, 1), status="evaluated")
-    # tag the (already-open, mirrored) MLflow run so eval runs are filterable
-    if m._mlf is not None:
-        m._mlf.set_tags({"from_scratch": True, "project": "tomac",
-                         "model": tag, "data": os.path.basename(args.data)})
+    # tag the (already-open, mirrored) W&B run so eval runs are filterable
+    if m._wb is not None:
+        m._wb.set_tags({"from_scratch": True, "project": "tomac",
+                        "model": tag, "data": os.path.basename(args.data)})
     m.log_metric(pid, "route_accuracy", round(route_acc, 4))
     m.log_metric(pid, "well_formed", round(wf_rate, 4))
     m.log_metric(pid, "over_call", round(over, 4))
@@ -141,9 +179,9 @@ def main():
     m.log_meta(pid, "model", tag)
     m.log_meta(pid, "data", os.path.basename(args.data))
     m.log_meta(pid, "per_item_log", jl)
-    # log the full per-item JSONL as an MLflow artifact (auditable eval trail)
-    if m._mlf is not None:
-        m._mlf.log_artifact(jl)
+    # log the full per-item JSONL as a wandb artifact (auditable eval trail)
+    if m._wb is not None:
+        m._wb.log_artifact(jl)
     m.summarize(pid)
     m.cost_report()
     m.close()

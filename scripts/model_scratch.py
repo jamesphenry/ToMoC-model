@@ -176,17 +176,65 @@ class RouterModel(nn.Module):
                                    targets.view(-1))
         return logits, loss
 
-    def generate(self, idx, max_new=128, temperature=1.0, eos_id=None):
+    def generate(self, idx, max_new=128, temperature=1.0, eos_id=None,
+                 rep_penalty=1.0, rep_window=16):
+        """Single-sequence generation (used by the live server).
+
+        rep_penalty: >1.0 suppresses tokens seen in the last `rep_window`
+        chars (breaks degenerate loops like 'memememe'/'titititi' that a
+        fixed-run stall check misses). 1.0 = no penalty (backward compat)."""
         self.eval()
         with torch.no_grad():
             for _ in range(max_new):
                 logits, _ = self.forward(idx[:, -self.cfg["max_len"]:])
                 next_logits = logits[:, -1, :] / max(temperature, 1e-6)
+                if rep_penalty > 1.0 and idx.shape[1] > 1:
+                    recent = idx[0, -rep_window:]
+                    next_logits[0, recent] /= rep_penalty
                 probs = F.softmax(next_logits, dim=-1)
                 nxt = torch.multinomial(probs, num_samples=1)
                 idx = torch.cat([idx, nxt], dim=1)
                 if eos_id is not None and int(nxt) == eos_id:
                     break
+        return idx
+
+    @torch.no_grad()
+    def generate_batch(self, idx, max_new=128, eos_id=None, stall_patience=8,
+                       rep_penalty=1.0, rep_window=16):
+        """Greedy batched generation (eval). temperature=0 -> argmax, so eval
+        metrics are reproducible. Caller passes EQUAL-LENGTH rows (eval groups by
+        prompt length) so there is no padding and positions stay correct.
+
+        stall_patience: stop a row early if the same char repeats this many times
+        (the trained model may never emit EOS; this prevents running the full
+        max_new on degenerate loops).
+
+        rep_penalty: >1.0 divides logits of tokens seen in the row's last
+        `rep_window` chars by the penalty before argmax — breaks the alternating
+        'mememe'/'titi' loops that a fixed-run stall check cannot catch."""
+        self.eval()
+        B = idx.shape[0]
+        finished = torch.zeros(B, dtype=torch.bool, device=idx.device)
+        for _ in range(max_new):
+            logits, _ = self.forward(idx[:, -self.cfg["max_len"]:])
+            nxt_logits = logits[:, -1, :]
+            if rep_penalty > 1.0:
+                # suppress per-row recently-generated tokens
+                win = idx[:, max(0, idx.shape[1] - rep_window):]
+                rows = torch.arange(B, device=idx.device)
+                nxt_logits[rows[:, None], win] /= rep_penalty
+            nxt = torch.argmax(nxt_logits, dim=-1, keepdim=True)
+            idx = torch.cat([idx, nxt], dim=1)
+            # stall detection on the generated suffix (per-row): if the last
+            # `stall_patience` chars are all identical, this row is looping.
+            if stall_patience and idx.shape[1] > stall_patience:
+                tail = idx[:, -stall_patience:]
+                stalled = torch.eq(tail, tail[:, :1]).all(dim=1)
+                finished |= stalled
+            just_fin = (nxt.squeeze(-1) == eos_id) if eos_id is not None else torch.zeros(B, dtype=torch.bool, device=idx.device)
+            finished |= just_fin
+            if finished.all():
+                break
         return idx
 
     def save(self, path):

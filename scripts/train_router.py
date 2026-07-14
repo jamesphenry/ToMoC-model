@@ -34,7 +34,7 @@ sys.path.insert(0, ROOT)
 from tomac_common import build_prompt, target_for
 from model_scratch import RouterModel, CharTokenizer
 from metrics import Metrics
-from mlflow_tracker import get_tracker
+from wandb_tracker import get_tracker
 
 DEFAULT_DATA = os.path.join(ROOT, "data", "raw", "cards.jsonl")
 DEFAULT_OUT = os.path.join(ROOT, "models", "scratch", "1")
@@ -134,6 +134,10 @@ def main():
     })
     trk.set_tags({"from_scratch": True, "project": "tomac",
                   "data": os.path.basename(args.data)})
+    # ensure the model-registry collection exists (org = WANDB_ENTITY / ToMoC)
+    trk.create_registry()
+    # log the exact training data (tracked Dataset + raw artifact)
+    trk.log_dataset(args.data, name=os.path.basename(args.data))
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     t0 = time.time()
@@ -177,11 +181,18 @@ def main():
     m.log_meta(pid, "params", model.num_params())
     m.log_meta(pid, "vocab", len(tok))
     m.log_meta(pid, "data", os.path.basename(args.data))
-    # MLflow: final summary metrics + checkpoint artifact, then close the run.
+    # pin the exact training data to this run as a versioned dataset artifact
+    trk.log_dataset(args.data, name="cards")
+    # W&B: final summary metrics (cost + system) as sortable columns, then close.
+    row = m.conn.execute(
+        "SELECT cost_usd, gpu_watts FROM passes WHERE id=?", (pid,)).fetchone()
     trk.log_metrics({
         "loss_final": round(loss_final, 4) if loss_final is not None else 0.0,
         "walltime_s": round(wall, 1),
         "gpu_mem_mb": round(gpu_mem, 1) if gpu_mem else 0.0,
+        "cost_usd": row["cost_usd"] if row and row["cost_usd"] is not None else 0.0,
+        "gpu_watts": row["gpu_watts"] if row and row["gpu_watts"] is not None else 0.0,
+        "params": model.num_params(),
     })
     trk.set_tags({"pass_id": pid})
     trk.log_artifact(args.out)
