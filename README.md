@@ -6,13 +6,37 @@
 > functions ARE its knowledge — capability scales by adding functions, not
 > parameters.
 
-> Cost to date: **$0.0435** across 51 GPU passes (10.76 GPU-hours) @ $0.14/kWh, ~90W over idle. Sovereignty metric vs API bills.
+---
+
+## Cost stats
+
+Sovereignty metric vs API bills — every GPU pass is metered (walltime × real
+`nvidia-smi` board draw × $0.14/kWh).
+
+- **Total to date: $0.0435** across **51 GPU passes** (10.76 GPU-hours) @ $0.14/kWh, ~90 W over idle.
+- Breakdown: training $0.0392 (19 passes, 9.72 GPU-h) · eval $0.0043 (32 passes, 1.04 GPU-h).
+- A single 100-epoch from-scratch train on an 8 GB Tesla P4 costs ~**$0.002–0.003** (≈30 min). A full eval is ~$0.0002.
 
 **Status:** two trained from-scratch routers are the current candidates
 (see wiki/findings for the full train→eval→discuss story):
 - `baseline-100ep-8fn` — 8 functions, single-tool routing, **96.3%** route_acc, no disambiguation.
 - `baseline-100ep-mt2` — full-list needle-style disambiguation, **93.7%** single-tool + **100%** multi-tool gold_hit.
 Both train their own weights from random init (no base model). Ship decision pending.
+
+---
+
+## Why a tiny model? (the thesis)
+
+| Approach | Params | Can it do math? | Can it look up your notes? | Cost |
+|----------|--------|-----------------|----------------------------|------|
+| big LLM | 70B+ | yes (in weights) | yes (in weights) | API $ / big GPU |
+| **tomac** | ~3M (from scratch) | routes to `compute` | routes to `wiki_read` | ~$0.01/pass on a P4 |
+
+A 360M model *cannot* do arithmetic on its own (the `smol` project measured
+**1.7%** on gsm8k). But it *can* learn "this is a math request → emit
+`TOOL compute`", and a 20-line sandboxed executor does the arithmetic perfectly.
+So we trade *model smarts* for *routing skill*. The result is a cheap, offline,
+sovereign assistant whose intelligence lives in functions, not weights.
 
 ---
 
@@ -34,26 +58,9 @@ function **does**. Because the router only needs to choose *well*, it can stay
 tiny — and you grow its capability by registering a new function in
 `functions/registry.json`, with **zero model code changes**.
 
----
+### Repository layout
 
-## Why a tiny model? (the thesis)
-
-| Approach | Params | Can it do math? | Can it look up your notes? | Cost |
-|----------|--------|-----------------|----------------------------|------|
-| big LLM | 70B+ | yes (in weights) | yes (in weights) | API $ / big GPU |
-| **tomac** | ~3M (from scratch) | routes to `compute` | routes to `wiki_read` | ~$0.01/pass on a P4 |
-
-A 360M model *cannot* do arithmetic on its own (the `smol` project measured
-**1.7%** on gsm8k). But it *can* learn "this is a math request → emit
-`TOOL compute`", and a 20-line sandboxed executor does the arithmetic perfectly.
-So we trade *model smarts* for *routing skill*. The result is a cheap, offline,
-sovereign assistant whose intelligence lives in functions, not weights.
-
----
-
-## Repository layout
-
-```
+```text
 tomac/
 ├── README.md                 # this file (homelabber guide)
 ├── AGENTS.md                 # resume-point for AI/agent sessions
@@ -67,11 +74,11 @@ tomac/
 │   ├── train_router.py       # FROM-SCRATCH training (random init, no base)
 │   ├── eval_router.py        # routing-quality eval (route_acc, per-fn, ...)
 │   ├── router_server.py      # live loop: q -> call -> execute -> answer
-│   ├── model_scratch.py       # tiny char-level transformer (the router)
+│   ├── model_scratch.py      # tiny char-level transformer (the router)
 │   ├── build_multitool_cards.py # synth DISAMBIGUATION cards (full tool list)
-│   ├── eval_multitool.py      # score multi-tool gold_hit / in_set / out_of_set
-│   ├── metrics.py              # SQLite ledger of every pass + cost
-│   ├── wandb_tracker.py        # optional Weights & Biases tracking (self-hosted)
+│   ├── eval_multitool.py     # score multi-tool gold_hit / in_set / out_of_set
+│   ├── metrics.py            # SQLite ledger of every pass + cost
+│   ├── wandb_tracker.py      # optional Weights & Biases tracking (self-hosted)
 │   └── probe_env.py          # verify the env before spending GPU
 ├── data/
 │   ├── raw/cards.jsonl       # generated training/eval cards
@@ -85,9 +92,10 @@ tomac/
 
 ---
 
-## Homelabber quick start (recreate it yourself)
+## How to (recreate it yourself)
 
-### 1. Get a GPU box (any CUDA GPU works; the numbers below are from an 8 GB Tesla P4)
+### 1. Get a GPU box
+Any CUDA GPU works; the numbers below are from an 8 GB Tesla P4.
 
 ```bash
 git clone git@github.com:jamesphenry/ToMoC-model.git
@@ -156,9 +164,24 @@ python scripts/router_server.py --model models/scratch/1 --chat
 python scripts/router_server.py --model models/scratch/1 --ask "what is 48 - 5 + 20"
 ```
 
----
+### 8. Add a new function (capability without retraining the architecture)
 
-## Optional — teach the router to DISAMBIGUATE (multi-tool)
+1. Add an entry to `functions/registry.json` with a `name`, `category`,
+   `params`, and a few `examples` (`request` → `args`).
+2. Add a handler of the same name in `functions/executors.py` that takes `args`
+   and returns `{"ok": True, "result": ...}`.
+3. Re-run `build_cards.py` (your new examples become training data) and retrain
+   from scratch.
+
+That's it. The model learns to route to the new function from its examples; the
+executor gives it the actual capability. **No model code changes, no new params.**
+
+> Safety: compute runs in an AST-scanned, isolated subprocess (no imports / `open`
+> / dunders / network). Write handlers (`remind_me`) are **gated** — they return
+> a `proposed_write` and never mutate disk until a human approves. The model can
+> *propose*, never *poison*.
+
+### 9. Optional — teach the router to DISAMBIGUATE (multi-tool)
 
 By default the router sees one request and emits one `TOOL` call. To teach it to
 *choose* the right tool when several are plausible (a selection boundary
@@ -176,25 +199,6 @@ python scripts/eval_multitool.py models/scratch/baseline-100ep-mt2 data/raw/mult
 `eval_multitool.py` reports `gold_hit` (picked the right tool), `in_set`
 (valid choice), and `out_of_set` (a genuine disambiguation error). See
 `wiki/findings/2026-07-14-disambiguation-fixed.md` for the full A/B.
-
----
-
-## Add a new function (capability without retraining the architecture)
-
-1. Add an entry to `functions/registry.json` with a `name`, `category`,
-   `params`, and a few `examples` (`request` → `args`).
-2. Add a handler of the same name in `functions/executors.py` that takes `args`
-   and returns `{"ok": True, "result": ...}`.
-3. Re-run `build_cards.py` (your new examples become training data) and retrain
-   from scratch.
-
-That's it. The model learns to route to the new function from its examples; the
-executor gives it the actual capability. **No model code changes, no new params.**
-
-> Safety: compute runs in an AST-scanned, isolated subprocess (no imports / `open`
-> / dunders / network). Write handlers (`remind_me`) are **gated** — they return
-> a `proposed_write` and never mutate disk until a human approves. The model can
-> *propose*, never *poison*.
 
 ---
 
