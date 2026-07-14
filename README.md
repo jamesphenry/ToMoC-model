@@ -239,8 +239,17 @@ python scripts/eval_multitool.py models/scratch/baseline-100ep-mt2 data/raw/mult
 - [ ] **Phase 4 — live assistant loop**: router_server as a homelab service (pi / daemon) dispatching real tools.
 - [ ] **Phase 5 — grow the function set**: weather, home-assistant, DNS/network probes, notes CRUD — capability without retraining the architecture.
 - [ ] **Phase 6 — self-extending registry**: model *proposes* new functions it can't route; human approves and implements the handler.
+- [ ] **Phase 7 — dream cycle (off-peak self-training)**: a gated harness that mines how tomac was used and retrains + self-promotes a better router behind an honest eval gate with automatic rollback. Weights retrain autonomously; the model's *vault* (memory) self-writes but flagged for human approval; code changes stay as proposals only. Design-only so far — see `wiki/plans/phase7-dream-cycle.md`.
 
 See `wiki/plans/` for the detailed breakdown of each phase.
+
+> *The villain-coded endgame: not a model that's smart, but a system that burns
+> the place down and rebuilds itself better every night while you sleep — and
+> leaves you a log of exactly what it changed.*[^villain]
+>
+> [^villain]: The autonomous retrain-with-rollback loop is the safe/fun core: a
+> bad night's model costs a third of a cent and is discarded on a sealed-val
+> gate. Code is never self-applied; memory is honest about what it authored.
 
 ---
 
