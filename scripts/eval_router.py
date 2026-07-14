@@ -139,7 +139,12 @@ def main():
             well_formed += 1
         if (not gold_no_tool) and pred_no_tool:
             under_call += 1
-        if gold_no_tool and (not pred_no_tool):
+        # over_call: predicted a REAL tool when gold wanted no tool.
+        # `answer_direct` emitted as TOOL {} is the correct no-tool answer
+        # (model signals "answer directly") — not an over-call. Only an actual
+        # tool (compute/get_time/etc.) on a no-tool card is a true over_call.
+        pred_is_realtime_tool = (name is not None) and (name != "answer_direct")
+        if gold_no_tool and pred_is_realtime_tool:
             over_call += 1
         per_fn.setdefault(gold, [0, 0])
         per_fn[gold][1] += 1
