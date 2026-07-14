@@ -171,6 +171,29 @@ def wiki_read(args: dict) -> dict:
     return {"ok": False, "error": f"no vault match for '{query}'", "verdict": "miss"}
 
 
+# ---------------------------------------------------------------- wiki_write
+def wiki_write(args: dict) -> dict:
+    """GATED write. Propose only — never mutates disk. Human commits via CLI.
+
+    Mirrors remind_me's sovereignty guarantee: the model can PROPOSE a vault
+    note, never poison the vault itself. The slug is derived deterministically
+    so a human can preview + commit the exact file path.
+    """
+    title = (args or {}).get("title")
+    content = (args or {}).get("content")
+    if not title or not content:
+        return {"ok": False, "error": "wiki_write needs 'title' and 'content'"}
+    cat = (args or {}).get("category") or ""
+    slug = _slugify(title)
+    rel = os.path.join("data", "vault", cat, f"{slug}.md") if cat else os.path.join("data", "vault", f"{slug}.md")
+    now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    proposed = (
+        f"---\ntitle: {title}\ncreated: {now}\n---\n\n{content}\n"
+    )
+    return {"ok": True, "proposed": True, "needs_approval": True,
+            "path": rel, "entry": proposed, "verdict": "proposed_write"}
+
+
 # ---------------------------------------------------------------- remind_me
 def remind_me(args: dict) -> dict:
     """GATED write. Propose only — never mutates disk. Human commits via CLI."""
@@ -190,6 +213,7 @@ _HANDLERS = {
     "get_time": get_time,
     "unit_convert": unit_convert,
     "wiki_read": wiki_read,
+    "wiki_write": wiki_write,
     "remind_me": remind_me,
 }
 
@@ -214,6 +238,7 @@ if __name__ == "__main__":
         ("get_time", {"tz": "UTC"}),
         ("unit_convert", {"value": 5, "from": "mi", "to": "km"}),
         ("wiki_read", {"query": "nonexistent thing xyz"}),
+        ("wiki_write", {"title": "test note", "content": "hello vault"}),
         ("remind_me", {"text": "test reminder", "when": "later"}),
         ("answer_direct", {}),
     ]:

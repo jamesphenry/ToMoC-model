@@ -69,6 +69,21 @@
       ]
     },
     {
+      "name": "wiki_write",
+      "category": "knowledge",
+      "description": "Save a note/fact to the local disk-backed vault (data/vault/<category>/<slug>.md). Sovereign: writes are GATED by default (proposed, human approves to commit). Use for explicit 'save/remember this note' requests.",
+      "params": [
+        {"name": "title", "type": "str", "required": true, "desc": "note title; becomes the vault slug"},
+        {"name": "content", "type": "str", "required": true, "desc": "the note body"},
+        {"name": "category", "type": "str", "required": false, "desc": "optional vault category subfolder"}
+      ],
+      "examples": [
+        {"request": "Save a note titled 'NAS backup plan' with the steps", "args": {"title": "NAS backup plan", "content": "1) snapshot zvol 2) rsync to offsite 3) verify"}},
+        {"request": "Write to my vault: 'API key rotation' — rotate every 90 days", "args": {"title": "API key rotation", "content": "rotate every 90 days", "category": "security"}},
+        {"request": "Remember that the router firmware is 2.4.1", "args": {"title": "router firmware", "content": "version 2.4.1"}}
+      ]
+    },
+    {
       "name": "remind_me",
       "category": "action",
       "description": "Save a reminder to the local disk (data/reminders.md). Sovereign: writes are gated by default (proposed, human approves to commit).",

@@ -152,6 +152,36 @@ def _aug_wiki(rng, n):
     return out
 
 
+def _aug_wiki_write(rng, n):
+    out = []
+    topics = [("NAS backup plan", "1) snapshot zvol 2) rsync to offsite 3) verify"),
+              ("API key rotation", "rotate every 90 days"),
+              ("router firmware", "version 2.4.1"),
+              ("VLAN plan", "mgmt=10, iot=30, guest=40"),
+              ("GPU server specs", "P4 8GB, 32GB RAM, 2x NVMe"),
+              ("backup schedule", "daily zfs snap, weekly offsite"),
+              ("SSH config notes", "key-only, port 2222, bastion"),
+              ("DNS setup", "pihole + unbound recursive"),
+              ("docker compose conventions", "profiles for dev/prod"),
+              ("ToMoC architecture", "functions-are-knowledge router")]
+    cats = ["", "security", "network", "infra", "concepts"]
+    for _ in range(n):
+        title, body = rng.choice(topics)
+        cat = rng.choice(cats)
+        forms = [
+            f"Save a note titled '{title}' with the steps",
+            f"Write to my vault: '{title}' — {body}",
+            f"Remember that {title} is {body}",
+            f"Note down: {title} = {body}",
+            f"Add to my notes: {title} ({body})",
+        ]
+        a = {"title": title, "content": body}
+        if cat:
+            a["category"] = cat
+        out.append((rng.choice(forms), a))
+    return out
+
+
 def _aug_remind(rng, n):
     out = []
     tasks = ["back up the NAS", "renew the domain", "restart the router",
@@ -173,7 +203,7 @@ def _aug_remind(rng, n):
 
 _AUGMENTERS = {
     "compute": _aug_compute, "unit_convert": _aug_unit, "get_time": _aug_time,
-    "wiki_read": _aug_wiki, "remind_me": _aug_remind,
+    "wiki_read": _aug_wiki, "wiki_write": _aug_wiki_write, "remind_me": _aug_remind,
 }
 
 
