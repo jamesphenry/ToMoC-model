@@ -1,0 +1,20 @@
+{"q": "What is 48 - 5 + 20?", "name": "compute", "args": {"expression": "48 - 5 + 20"}, "target": "TOOL compute {\"expression\": \"48 - 5 + 20\"}\n"}
+{"q": "Calculate 12 * 33", "name": "compute", "args": {"expression": "12 * 33"}, "target": "TOOL compute {\"expression\": \"12 * 33\"}\n"}
+{"q": "What is 144 divided by 12?", "name": "compute", "args": {"expression": "144 / 12"}, "target": "TOOL compute {\"expression\": \"144 / 12\"}\n"}
+{"q": "What time is it right now?", "name": "get_time", "args": {}, "target": "TOOL get_time {}\n"}
+{"q": "What time is it in Tokyo?", "name": "get_time", "args": {"tz": "Tokyo"}, "target": "TOOL get_time {\"tz\": \"Tokyo\"}\n"}
+{"q": "Current time in New York please", "name": "get_time", "args": {"tz": "New York"}, "target": "TOOL get_time {\"tz\": \"New York\"}\n"}
+{"q": "How many kilometers is 5 miles?", "name": "unit_convert", "args": {"value": 5, "from": "mi", "to": "km"}, "target": "TOOL unit_convert {\"value\": 5, \"from\": \"mi\", \"to\": \"km\"}\n"}
+{"q": "Convert 10 kg to pounds", "name": "unit_convert", "args": {"value": 10, "from": "kg", "to": "lb"}, "target": "TOOL unit_convert {\"value\": 10, \"from\": \"kg\", \"to\": \"lb\"}\n"}
+{"q": "What's 2 hours in minutes?", "name": "unit_convert", "args": {"value": 2, "from": "h", "to": "min"}, "target": "TOOL unit_convert {\"value\": 2, \"from\": \"h\", \"to\": \"min\"}\n"}
+{"q": "What do my notes say about the DNS setup?", "name": "wiki_read", "args": {"query": "the DNS setup"}, "target": "TOOL wiki_read {\"query\": \"the DNS setup\"}\n"}
+{"q": "Look up docker compose conventions in the vault", "name": "wiki_read", "args": {"query": "docker compose conventions"}, "target": "TOOL wiki_read {\"query\": \"docker compose conventions\"}\n"}
+{"q": "Save a note: backup plan is to snapshot nightly", "name": "wiki_write", "args": {"title": "backup plan", "content": "snapshot nightly", "category": "infra"}, "target": "TOOL wiki_write {\"title\": \"backup plan\", \"content\": \"snapshot nightly\", \"category\": \"infra\"}\n"}
+{"q": "Write down that the router config uses VLAN 10", "name": "wiki_write", "args": {"title": "router config", "content": "uses VLAN 10", "category": "infra"}, "target": "TOOL wiki_write {\"title\": \"router config\", \"content\": \"uses VLAN 10\", \"category\": \"infra\"}\n"}
+{"q": "Search the web for latest NVIDIA GPU benchmarks", "name": "web_search", "args": {"query": "latest NVIDIA GPU benchmarks"}, "target": "TOOL web_search {\"query\": \"latest NVIDIA GPU benchmarks\"}\n"}
+{"q": "Find the best homelab router 2026 on the web", "name": "web_search", "args": {"query": "best homelab router 2026", "limit": 5}, "target": "TOOL web_search {\"query\": \"best homelab router 2026\", \"limit\": 5}\n"}
+{"q": "Remind me to back up the NAS", "name": "remind_me", "args": {"text": "back up the NAS"}, "target": "TOOL remind_me {\"text\": \"back up the NAS\"}\n"}
+{"q": "Remind me to renew the domain on Friday", "name": "remind_me", "args": {"text": "renew the domain", "when": "Friday"}, "target": "TOOL remind_me {\"text\": \"renew the domain\", \"when\": \"Friday\"}\n"}
+{"q": "Hi there, how are you?", "name": "answer_direct", "args": {}, "target": "TOOL answer_direct {}\n"}
+{"q": "What's your favorite color?", "name": "answer_direct", "args": {}, "target": "TOOL answer_direct {}\n"}
+{"q": "Tell me a joke", "name": "answer_direct", "args": {}, "target": "TOOL answer_direct {}\n"}
