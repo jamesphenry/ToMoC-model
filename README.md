@@ -20,13 +20,15 @@ to show how cheap *sovereign* inference is next to a cloud LLM bill.
 - A single 100-epoch from-scratch train on an 8 GB Tesla P4 costs ~**$0.002–0.003** (≈30 min). A full eval is ~$0.0002.
 
 **Status:** the current router is **`baseline-100ep-8fn` (2.3M)** — a working
-router at **96.3% route_acc** (full 3936-card set, eval_router pass-62,
-`rep_penalty=1.4` + greedy temp=0 — the SAME contract as live). Live decode is
-**greedy (temperature=0) + `rep_penalty=1.4`** (BUG-006 fixed: live no longer
-samples). The earlier live garbling (`TOOOOL`) was a decode mismatch (live
-sampled at `temperature=1.0`, eval was greedy + rep=1.4); that is fixed. Per-fn
-(pass-62): get_time 100%, compute 95.5%, answer_direct 97.0%; over_call 0.76%,
-under_call 0.91%.
+router, **PINNED** as the known-good floor (frozen copy at
+`models/scratch/baseline-100ep-8fn.PINNED`; see
+[wiki/journal — baseline pinned](wiki/journal/2026-07-15-baseline-pinned.md)).
+Full-set metrics (eval_router pass-63, `rep_penalty=1.4` + greedy temp=0 — the
+SAME contract as live): **route_accuracy 0.9627**, **well_formed 0.9220**,
+**arg_accuracy 0.5366** (right function AND right args), over_call 0.76%,
+under_call 0.91%. The ~43pt routing-vs-arg gap is the known weakness: the router
+picks the right function but often mis-fills args. Live decode is **greedy
+(temperature=0) + `rep_penalty=1.4`** (BUG-006 fixed: live no longer samples).
 
 A capacity bump to **`baseline-big` (10.9M)** REGRESSED — honest eval
 (route_acc 0.25, collapsed to `answer_direct`) and was **rolled back** by
@@ -36,7 +38,7 @@ A capacity bump to **`baseline-big` (10.9M)** REGRESSED — honest eval
 [wiki/findings — baseline-big-aug regressed](wiki/findings/2026-07-15-baseline-big-aug-regressed.md)
 and [wiki/journal — capacity reverted](wiki/journal/2026-07-15-capacity-revert.md).
 Scaling up hurts routing; 2.3M is the sweet spot.
-- `baseline-100ep-8fn` — 8 functions, single-tool, **96.3% route_acc / 92.2% well_formed** (eval_router pass-62, rep=1.4, full set). get_time 100%, compute 95.5%. BUG-007 OPEN only for missing arg-correctness metric.
+- `baseline-100ep-8fn` — 8 functions, single-tool, **96.3% route_acc / 92.2% well_formed / 53.7% arg_accuracy** (eval_router pass-63, rep=1.4, full set). PINNED as the known-good floor.
 - `baseline-big` — **10.9M params** (d_model 384 / 6 layers), **REGRESSED**
   (honest route_acc 0.25, collapsed to answer_direct; rolled back, pass-58/61).
 - `baseline-100ep-mt2` — full-list disambiguation, **93.7%** single + **100%** multi-tool gold_hit.

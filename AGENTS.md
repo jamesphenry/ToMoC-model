@@ -39,13 +39,16 @@ dependency.
 - **From-scratch model** (`scripts/model_scratch.py`): char-level pre-norm
   Transformer, random init. The sovereign router is **`baseline-100ep-8fn` =
   ~2.3M params** (d_model 192, 4 layers, 6 heads) — this is the production floor.
-  A 10.9M capacity bump (`baseline-big`) REGRESSED on honest eval (collapsed to
-  `answer_direct`, route_acc 0.25 vs the 2.3M model's ~0.90); an augmented-data
-  re-run collapsed identically, falsifying the "bigger brain needs more
-  curriculum" hypothesis (wiki/findings/2026-07-15-baseline-big-aug-regressed.md).
-  **Scaling up hurts routing** — 2.3M is the sweet spot. Model defaults in
-  `scripts/model_scratch.py` are d_model=256/6L; the 8fn runs used `--d-model 192
-  --n-layers 4`.
+  **PINNED** (2026-07-15): a frozen copy lives at `models/scratch/baseline-100ep-8fn.PINNED`
+  (gitignored) so future experiments can never clobber the known-good baseline.
+  Verified full-set metrics (eval_router pass-63, rep=1.4, temp=0):
+  route_accuracy **0.9627**, well_formed **0.9220**, **arg_accuracy 0.5366**,
+  over_call 0.0076, under_call 0.0091. The ~43pt routing-vs-arg gap is the known
+  weakness (router picks right fn, mis-fills args; unit_convert/wiki_write weakest).
+  A 10.9M capacity bump (`baseline-big`) REGRESSED (collapsed to `answer_direct`,
+  route_acc 0.25); an augmented-data re-run collapsed identically — **scaling up
+  hurts routing**, 2.3M is the sweet spot. Model defaults in `scripts/model_scratch.py`
+  are d_model=256/6L; the 8fn runs used `--d-model 192 --n-layers 4`.
   Vocab = chars seen in cards (+ CUE). Saves `model.pt` + `config.json` +
   `tokenizer.json`.
 - **Pipeline**: `build_cards.py` (synth from registry) → `train_router.py`
