@@ -20,17 +20,23 @@ to show how cheap *sovereign* inference is next to a cloud LLM bill.
 - A single 100-epoch from-scratch train on an 8 GB Tesla P4 costs ~**$0.002–0.003** (≈30 min). A full eval is ~$0.0002.
 
 **Status:** the current sovereign router is **`baseline-100ep-8fn` (2.3M)**.
+Live decode is **greedy (temperature=0)** — the router is deterministic; a
+request always routes the same way (no sampling). The earlier live garbling
+(`TOOOOL compute {"47+3"}`, loops to 160 chars) was BUG-006: live sampled at
+`temperature=1.0` while eval was greedy. Fixed; the model's greedy output was
+always correct.
+
 A capacity bump to **`baseline-big` (10.9M)** REGRESSED — honest eval
 (route_acc 0.25, collapsed to `answer_direct`) and was **rolled back** by
-`promote.py` (pass-58). A capacity A/B is **in flight** testing the data-volume
-hypothesis: a bigger brain needs more *curriculum*, not just epochs — see
-[wiki/findings — capacity data-volume hypothesis](wiki/findings/2026-07-14-capacity-data-volume-hypothesis.md).
-The 8fn 96.3% *name-only* figure is crutch-inflated (rep-penalty 1.4, BUG-007);
-the honest re-baseline lands after the A/B.
-- `baseline-100ep-8fn` — 8 functions, single-tool, **96.3%** name-only (crutch-inflated; see BUG-007).
+`promote.py` (pass-58). The data-volume A/B is **CLOSED**: B (10.9M on 12.8k
+augmented cards, 100ep) collapsed identically (pass-60), falsifying "bigger
+brain needs more curriculum" — see
+[wiki/findings — baseline-big-aug regressed](wiki/findings/2026-07-15-baseline-big-aug-regressed.md)
+and [wiki/journal — capacity reverted](wiki/journal/2026-07-15-capacity-revert.md).
+Scaling up hurts routing; 2.3M is the sweet spot.
+- `baseline-100ep-8fn` — 8 functions, single-tool, **~90%** route_acc (honest, `rep_penalty=1.0`; the old 96.3% was crutch-inflated by `rep_penalty=1.4`, BUG-007).
 - `baseline-big` — **10.9M params** (d_model 384 / 6 layers), **REGRESSED**
   (honest route_acc 0.25, collapsed to answer_direct; rolled back, pass-58).
-  Capacity A/B re-run **in flight** (B: augmented 12.8k cards).
 - `baseline-100ep-mt2` — full-list disambiguation, **93.7%** single + **100%** multi-tool gold_hit.
 All train from random init (no base model).
 

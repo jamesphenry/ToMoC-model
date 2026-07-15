@@ -191,8 +191,12 @@ class RouterModel(nn.Module):
                 if rep_penalty > 1.0 and idx.shape[1] > 1:
                     recent = idx[0, -rep_window:]
                     next_logits[0, recent] /= rep_penalty
-                probs = F.softmax(next_logits, dim=-1)
-                nxt = torch.multinomial(probs, num_samples=1)
+                if temperature <= 0:
+                    # greedy — MUST match eval (generate_batch) so live == test
+                    nxt = torch.argmax(next_logits, dim=-1, keepdim=True)
+                else:
+                    probs = F.softmax(next_logits, dim=-1)
+                    nxt = torch.multinomial(probs, num_samples=1)
                 idx = torch.cat([idx, nxt], dim=1)
                 if eos_id is not None and int(nxt) == eos_id:
                     break

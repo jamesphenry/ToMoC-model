@@ -48,7 +48,7 @@ def load_model(model_path, device):
 def route_once(tok, model, q, device, max_new=MAX_NEW):
     prompt = build_prompt(q)
     ids = torch.tensor([tok.encode(prompt)], dtype=torch.long, device=device)
-    gen = model.generate(ids, max_new=max_new, temperature=1.0, eos_id=tok.eos_id)
+    gen = model.generate(ids, max_new=max_new, temperature=0.0, eos_id=tok.eos_id)
     raw = tok.decode(gen[0][len(ids[0]):].tolist())
     name, args, wf, _ = parse_call(raw, known_names=_REG_NAMES)
     if name is None:
