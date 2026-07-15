@@ -13,3 +13,9 @@
 
 ### Next
 - Full honest eval of `baseline-100ep-8fn` at the unified contract (`rep_penalty=1.4`, temp=0) to get the user-facing number + per-fn breakdown (pending; promote pass-61 was at rep=1.0).
+
+### Addendum 2026-07-15 (pass-62 — real user-facing numbers)
+- Full eval at the unified contract (`rep_penalty=1.4` + greedy temp=0): **route_accuracy 0.9627**, **well_formed 0.9220**, over_call 0.0076, under_call 0.0091.
+- Per-fn: get_time **1.000** (849/849), compute **0.9545** (819/858), answer_direct **0.9695** (954/984).
+- So the "0/40 compute" was a pathological 40-card subset, NOT representative — full-set compute is **95.5%**. The README's original "96.3%" was correct (measured at rep=1.4 on the full set); the "crutch-inflated" suspicion was wrong — `rep_penalty=1.4` is a legitimate anti-loop mechanism the small model needs, now in BOTH paths, so the number is honest AND consistent (eval==live).
+- **BUG-007 decode half is fully FIXED + verified.** The bug stays OPEN only for the **missing arg-correctness metric** (name-only `route_accuracy` can still hide wrong JSON args). Compute arg-transcription is NOT a routing failure (95.5% routes correctly); arg-correctness is the unmet guardrail.
