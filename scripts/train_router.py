@@ -33,6 +33,7 @@ sys.path.insert(0, ROOT)
 
 from tomac_common import build_prompt, target_for
 from model_scratch import RouterModel, CharTokenizer
+from model_bitnet import BitNetRouterModel
 from metrics import Metrics
 from wandb_tracker import get_tracker
 
@@ -94,6 +95,11 @@ def main():
     ap.add_argument("--n-heads", type=int, default=6)
     ap.add_argument("--d-ff", type=int, default=1024)
     ap.add_argument("--max-len", type=int, default=512)
+    ap.add_argument("--bitnet", action="store_true",
+                    help="train the BitNet b1.58 ternary-weight variant "
+                         "(model_bitnet.BitNetRouterModel) instead of the FP "
+                         "RouterModel. Same shape contract; weights ternarized "
+                         "in forward with STE training.")
     ap.add_argument("--limit", type=int, default=0, help="debug: cap samples")
     args = ap.parse_args()
 
@@ -117,10 +123,11 @@ def main():
     dl = DataLoader(ds, batch_size=args.batch, shuffle=True,
                     collate_fn=lambda b: collate(b, args.max_len, tok.pad_id))
 
-    model = RouterModel(vocab_size=len(tok), d_model=args.d_model,
-                        n_layers=args.n_layers, n_heads=args.n_heads,
-                        d_ff=args.d_ff, max_len=args.max_len).to(device)
-    print(f"model params: {model.num_params():,}")
+    model_cls = BitNetRouterModel if args.bitnet else RouterModel
+    model = model_cls(vocab_size=len(tok), d_model=args.d_model,
+                      n_layers=args.n_layers, n_heads=args.n_heads,
+                      d_ff=args.d_ff, max_len=args.max_len).to(device)
+    print(f"model params: {model.num_params():,}  ({'BitNet b1.58' if args.bitnet else 'FP'})")
 
     # ---- MLflow: open a run up front so the loss curve streams live ----
     trk = get_tracker()

@@ -30,6 +30,7 @@ sys.path.insert(0, ROOT)
 
 from tomac_common import build_prompt, parse_call
 from model_scratch import RouterModel, CharTokenizer
+from model_bitnet import BitNetRouterModel
 from metrics import Metrics
 from functions.registry import names as _reg_names
 _REG_NAMES = set(_reg_names())
@@ -40,7 +41,11 @@ LOGS = os.path.join(ROOT, "logs")
 
 def load_model(model_path, device):
     tok = CharTokenizer.load(os.path.join(model_path, "tokenizer.json"))
-    model = RouterModel.load(model_path, device=device).to(device)
+    # pick the right class from the saved config (bitnet flag)
+    with open(os.path.join(model_path, "config.json")) as fh:
+        cfg = json.load(fh)
+    cls = BitNetRouterModel if cfg.get("bitnet") else RouterModel
+    model = cls.load(model_path, device=device).to(device)
     model.eval()
     return tok, model
 
