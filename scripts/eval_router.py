@@ -4,6 +4,7 @@
 Scores the DECISION QUALITY of the router, not just "did it call":
   route_accuracy : gold function == predicted function (the routing decision)
   well_formed    : call parses to valid JSON (or no-tool when gold=no-tool)
+  arg_accuracy   : correct route AND args dict == gold args (order-independent)
   over_call      : predicted a tool when gold said answer_direct
   under_call     : predicted none when gold said a tool
   per_function   : accuracy per function name (router precision/recall)
@@ -115,6 +116,7 @@ def main():
     n = len(cards)
     correct = 0
     well_formed = 0
+    arg_correct = 0
     over_call = 0
     under_call = 0
     per_fn = {}
@@ -152,9 +154,20 @@ def main():
         per_fn[gold][1] += 1
         if c_ok:  # correct_route already handles gold_no_tool && pred_no_tool
             per_fn[gold][0] += 1
+        # arg-correctness: only meaningful when the route + args parse cleanly,
+        # and gold actually carries args (no-tool/empty-arg calls are trivially
+        # "correct args" once routed right). Compute it on the full set so the
+        # metric reflects end-to-end call fidelity, not just routing.
+        gold_args = c.get("args") or {}
+        if c_ok and wf and (gold_args == (args_ or {})):
+            arg_correct += 1
+            a_ok = True
+        else:
+            a_ok = False
         rows.append({"q": c["q"], "gold": gold, "pred": name,
-                     "pred_args": args_, "well_formed": wf,
-                     "correct_route": c_ok, "raw": raw.strip()})
+                     "pred_args": args_, "gold_args": gold_args,
+                     "well_formed": wf, "correct_route": c_ok,
+                     "arg_correct": a_ok, "raw": raw.strip()})
     wall = time.time() - t0
 
     os.makedirs(LOGS, exist_ok=True)
@@ -167,6 +180,7 @@ def main():
 
     route_acc = correct / n
     wf_rate = well_formed / n
+    arg_acc = arg_correct / n
     over = over_call / n
     under = under_call / n
 
@@ -179,6 +193,7 @@ def main():
                         "model": tag, "data": os.path.basename(args.data)})
     m.log_metric(pid, "route_accuracy", round(route_acc, 4))
     m.log_metric(pid, "well_formed", round(wf_rate, 4))
+    m.log_metric(pid, "arg_accuracy", round(arg_acc, 4))
     m.log_metric(pid, "over_call", round(over, 4))
     m.log_metric(pid, "under_call", round(under, 4))
     for fn, (ok, tot) in per_fn.items():
@@ -196,6 +211,7 @@ def main():
     print(f"\n=== eval: {tag} ({n} cards, {wall:.1f}s) ===")
     print(f"  route_accuracy : {route_acc:.4f}")
     print(f"  well_formed    : {wf_rate:.4f}")
+    print(f"  arg_accuracy   : {arg_acc:.4f}  (correct route + args match gold)")
     print(f"  over_call      : {over:.4f}")
     print(f"  under_call     : {under:.4f}")
     print("  per-function:")
