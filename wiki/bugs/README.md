@@ -14,5 +14,5 @@ Newest last (by number).
 - [BUG-004](BUG-004-per-call-eval-starves-gpu.md) — per-call eval starves the GPU
 - [BUG-005](BUG-005-lora-wrong-base.md) — LoRA loaded on the wrong base
 - [BUG-006](BUG-006-decode-mismatch.md) — live server silently samples; eval is greedy (MISMATCH) — **RESOLVED 2026-07-15** (greedy live decode temp=0)
-- [BUG-007](BUG-007-rep-penalty-inflation.md) — eval inflates route accuracy via rep_penalty the live path never applies — **RESOLVED 2026-07-15** (default rep_penalty 1.0; root cause was decode mismatch, not capacity)
+- [BUG-007](BUG-007-rep-penalty-inflation.md) — eval inflates route accuracy via rep_penalty the live path never applies — **REOPENED 2026-07-15** (decode unified, but model weakness real: compute 0/40 on canonical cards; earlier "38/40" was favorable-subset artifact)
 - [BUG-008](BUG-008-wandb-silent-noop.md) — wandb run silently no-ops when WANDB_API_URL unset; progress lost to W&B

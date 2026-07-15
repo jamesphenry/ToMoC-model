@@ -98,8 +98,8 @@ def main():
     ap.add_argument("--model", default=os.path.join(ROOT, "models", "scratch", "1"))
     ap.add_argument("--data", default=DEFAULT_DATA)
     ap.add_argument("--max-new", type=int, default=160)
-    ap.add_argument("--rep-penalty", type=float, default=1.0,
-                    help="repetition penalty (>1 suppresses recent tokens; breaks mememe loops). Default 1.0 = honest eval (no crutch); see BUG-007.")
+    ap.add_argument("--rep-penalty", type=float, default=1.4,
+                    help="repetition penalty (>1 suppresses recent tokens; breaks mememe loops). Must MATCH the live server's value (single decode contract). Default 1.4 = what the small model needs to not loop.")
     ap.add_argument("--limit", type=int, default=0, help="debug: cap cards")
     args = ap.parse_args()
 

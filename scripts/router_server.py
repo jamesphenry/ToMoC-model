@@ -45,10 +45,11 @@ def load_model(model_path, device):
 
 
 @torch.no_grad()
-def route_once(tok, model, q, device, max_new=MAX_NEW):
+def route_once(tok, model, q, device, max_new=MAX_NEW, rep_penalty=1.4):
     prompt = build_prompt(q)
     ids = torch.tensor([tok.encode(prompt)], dtype=torch.long, device=device)
-    gen = model.generate(ids, max_new=max_new, temperature=0.0, eos_id=tok.eos_id)
+    gen = model.generate(ids, max_new=max_new, temperature=0.0,
+                         eos_id=tok.eos_id, rep_penalty=rep_penalty)
     raw = tok.decode(gen[0][len(ids[0]):].tolist())
     name, args, wf, _ = parse_call(raw, known_names=_REG_NAMES)
     if name is None:
@@ -64,13 +65,15 @@ def main():
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--ask", default=None)
     ap.add_argument("--chat", action="store_true")
+    ap.add_argument("--rep-penalty", type=float, default=1.4,
+                    help="repetition penalty for live decode (anti-loop; must match eval). Default 1.4.")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tok, model = load_model(args.model, device)
 
     if args.ask:
-        r = route_once(tok, model, args.ask, device)
+        r = route_once(tok, model, args.ask, device, rep_penalty=args.rep_penalty)
         print(json.dumps(r, ensure_ascii=False, indent=2))
         return
 
@@ -88,7 +91,7 @@ def main():
             if q == "/approve":
                 print("(no pending proposal to approve)")
                 continue
-            r = route_once(tok, model, q, device)
+            r = route_once(tok, model, q, device, rep_penalty=args.rep_penalty)
             print(f"  route : {r.get('routed')}  args={r.get('args')}")
             print(f"  exec  : {r.get('exec')}")
             if r.get('routed') is None:
