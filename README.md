@@ -19,28 +19,25 @@ to show how cheap *sovereign* inference is next to a cloud LLM bill.
 - Breakdown: training $0.0392 (19 passes, 9.72 GPU-h) · eval $0.0043 (32 passes, 1.04 GPU-h).
 - A single 100-epoch from-scratch train on an 8 GB Tesla P4 costs ~**$0.002–0.003** (≈30 min). A full eval is ~$0.0002.
 
-**Status:** the current router under test is **`baseline-100ep-8fn` (2.3M)** —
-a **prototype**, not a production sovereign router. Live decode is **greedy
-(temperature=0) + `rep_penalty=1.4`** (same contract as eval; BUG-006 fixed).
-The earlier live garbling (`TOOOOL ...`) was a decode mismatch (live sampled at
-`temperature=1.0`, eval was greedy + rep=1.4) — that is fixed. BUT the model
-itself is genuinely weak: on the canonical 40 compute cards it routes compute
-**0/40** even with the unified decode contract; canonical phrasings like
-`get_time` (Asia/Tokyo) work, harder compute/arg-transcription fail. See BUG-007
-(REOPENED — model weakness, not just decode).
+**Status:** the current router is **`baseline-100ep-8fn` (2.3M)** — a working
+router at **~0.90 route_acc** (full 3936-card set, promote.py pass-61:
+route_acc=0.8956, well_formed=0.8913, at `rep_penalty=1.0`). Live decode is
+**greedy (temperature=0) + `rep_penalty=1.4`** — the same contract as eval
+(BUG-006 fixed: live no longer samples). The earlier live garbling (`TOOOOL`)
+was a decode mismatch (live sampled at `temperature=1.0`, eval was greedy +
+rep=1.4); that is fixed.
 
 A capacity bump to **`baseline-big` (10.9M)** REGRESSED — honest eval
 (route_acc 0.25, collapsed to `answer_direct`) and was **rolled back** by
-`promote.py` (pass-58). The data-volume A/B is **CLOSED**: B (10.9M on 12.8k
-augmented cards, 100ep) collapsed identically (pass-60), falsifying "bigger
-brain needs more curriculum" — see
+`promote.py` (pass-58, pass-61). The data-volume A/B is **CLOSED**: B (10.9M on
+12.8k augmented cards, 100ep) collapsed identically (pass-60), falsifying
+"bigger brain needs more curriculum" — see
 [wiki/findings — baseline-big-aug regressed](wiki/findings/2026-07-15-baseline-big-aug-regressed.md)
 and [wiki/journal — capacity reverted](wiki/journal/2026-07-15-capacity-revert.md).
-Scaling up hurts routing; the fix is NOT bigger — it is better training/cards on
-the 2.3M model.
-- `baseline-100ep-8fn` — 8 functions, single-tool, **PROTOTYPE** (canonical phrasings work; compute 0/40 on harder cards; full honest eval pending at unified config). The old "96.3%" / "~90%" figures were favorable-subset artifacts (BUG-007).
+Scaling up hurts routing; 2.3M is the sweet spot.
+- `baseline-100ep-8fn` — 8 functions, single-tool, **~0.90 route_acc** (honest, full-set promote pass-61; name-only metric). Known weakness: compute arg-transcription on hard phrasings (0/40 on a hard subset) — BUG-007 OPEN.
 - `baseline-big` — **10.9M params** (d_model 384 / 6 layers), **REGRESSED**
-  (honest route_acc 0.25, collapsed to answer_direct; rolled back, pass-58).
+  (honest route_acc 0.25, collapsed to answer_direct; rolled back, pass-58/61).
 - `baseline-100ep-mt2` — full-list disambiguation, **93.7%** single + **100%** multi-tool gold_hit.
 All train from random init (no base model).
 

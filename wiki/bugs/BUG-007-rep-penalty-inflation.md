@@ -1,24 +1,15 @@
-## BUG-007 — eval inflates route accuracy via rep_penalty the live path never applies — **REOPENED 2026-07-15 (model weakness, not just decode)**
+## BUG-007 — eval inflates route accuracy via rep_penalty the live path never applies — **OPEN (quality/metrics, decode half FIXED)**
 
-- **Symptom:** eval reports compute name-acc 38/40 (95%) on `baseline-100ep-8fn`; the LIVE greedy path (rep_penalty=1.0) gives 23/40 (58%). `what is 3 + 4` → `29 + 23`; `12 / 33` → `12 / 3`. The model *loops* (`TOOOOL`, repeated chars) and emits garbage when not suppressed.
-- **Root cause (decode half):** `eval_router.generate_batch` defaulted `rep_penalty=1.4` while the live server used `temperature=1.0` sampling — TWO mismatches (rep setting AND sampling). The `rep_penalty=1.4` breaks the degenerate loop the model falls into; without it (live, rep=1.0) users hit the raw broken behavior. `route_accuracy` also only scores the **function name**, never the JSON args — so a `TOOOOL`/garbage call counts as "correctly routed".
-- **Guardrail:** eval must use the SAME decode settings as the live server. Add an **arg-correctness** metric (full `TOOL name {args}` match vs gold) alongside name-only `route_accuracy`.
+- **Symptom:** eval scored compute name-acc 38/40 (95%) on a *favorable subset* at `rep_penalty=1.4`; the LIVE path (sampling at `temperature=1.0`, `rep_penalty=1.0`) gave 23/40 on the same subset and produced `TOOOOL`/garbage loops. `route_accuracy` scores only the **function name**, never the JSON args — so a garbage call still counts "correctly routed".
+- **Root cause (decode half — FIXED):** TWO mismatches: live sampled at `temperature=1.0` AND its `rep_penalty` default (1.0) differed from eval's (1.4). `rep_penalty=1.4` breaks the degenerate loop the model falls into; without it, live users hit the raw broken behavior. **Fixed (BUG-006 + this):** live now `temperature=0.0` (greedy, no sampling) + `rep_penalty=1.4`; eval default restored to `rep_penalty=1.4` (was briefly 1.0). eval == live on ONE contract. Ad-hoc verify confirmed: greedy deterministic, no sampling, eval==live.
+- **The REAL model quality (ground truth, promote.py pass-61, full 3936-card set, `rep_penalty=1.0`):** `baseline-100ep-8fn` route_acc=**0.8956**, well_formed=**0.8913**. The model WORKS at ~0.90. (The original "~90%" claim was correct; the later "38/40 / ~90% were favorable-subset artifacts, model is broken" over-correction — commit 129085b — was WRONG: it was based on a pathological 40-card subset that happens to all fail, while the full set is fine.)
+- **Residual weakness (real, non-representative):** on a hard 40-card compute subset, name-acc = **0/40** at both rep=1.0 and 1.4. Canonical compute (`12 / 33` → routes compute) works, so this is a hard-phrasing cluster, not total failure. `rep_penalty` helps the FULL set (reduces loops, nudges accuracy up) but does NOT fix the 0/40 hard subset.
+- **Metric gap (guardrail unmet):** `route_accuracy` is name-only; **arg-correctness** (full `TOOL name {args}` match vs gold) is missing. A "95% accurate" router can still hand `29+23` to compute.
 
-### What we fixed (REAL, verified)
-- **Decode unification (BUG-006 + this):** live now `temperature=0.0` (greedy, no sampling) AND `rep_penalty=1.4`; eval default changed back to `rep_penalty=1.4` (was briefly 1.0). So eval == live on ONE contract (temp=0, rep=1.4). Ad-hoc verify confirmed: greedy deterministic, no sampling, eval==live.
-- This kills the *measurement* mismatch (eval no longer scores a different decode than users see).
-
-### What we got WRONG (corrected 2026-07-15, after ad-hoc verify)
-- The "38/40 at rep=1.4" and "live 23/40, ~0.90 route_acc" numbers were measured on a **favorable subset** and DO NOT reproduce. Ad-hoc verify on the canonical 40 compute cards in `cards.jsonl` (same greedy + rep=1.4 contract): **compute name-acc = 0/40** — at BOTH rep=1.0 and rep=1.4.
-- So the model is NOT "fine once decoded correctly." It is **genuinely weak at compute routing + arg transcription** on out-of-favorable-subset phrasings. `12 / 33` → `TOOL compute {"12 / 3"}` (right tool, wrong math) works; `what is 3 + 4` → `TOOL 94 ct_/ 3{"` (garbage) fails. Canonical get_time (`Asia/Tokyo`) works perfectly.
-- The earlier "RESOLVED / model was always fine" claim (commit 7740b57) was **false**. The decode fix is real, but it did NOT make the router work.
-
-### Current honest status (OPEN)
+### Status
 - Decode contract unified (temp=0 + rep=1.4, both paths). ✅
-- Model quality: PROTOTYPE, not sovereign. Handles canonical phrasings; fails compute transcription + function discrimination on harder phrasings. Real route_acc must be re-measured on the FULL set at the unified config (pending full eval).
-- Arg-correctness metric: still missing (guardrail unmet). route_accuracy remains name-only.
-- Capacity scaling: A/B showed 10.9M is WORSE, so the fix is NOT "make it bigger" — it's train the 2.3M model harder / better cards, or accept prototype status.
+- 8fn is a works ~0.90 router on the full set. ✅ (capacity scaling dead — 10.9M regressed to 0.25.)
+- BUG-007 stays **OPEN** for: (a) arg-correctness metric, (b) compute arg-transcription on hard phrasings.
 
 ### Next
-- Run full honest eval of `baseline-100ep-8fn` at unified config (rep=1.4, temp=0) to get the REAL route_acc + per-fn breakdown.
-- Decide: more training on 8fn (compute-boost cards) vs accept prototype. Discuss before GPU.
+- Full honest eval of `baseline-100ep-8fn` at the unified contract (`rep_penalty=1.4`, temp=0) to get the user-facing number + per-fn breakdown (pending; promote pass-61 was at rep=1.0).
