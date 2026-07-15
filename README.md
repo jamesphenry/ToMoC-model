@@ -59,7 +59,7 @@ All train from random init (no base model).
 | Approach | Params | Can it do math? | Can it look up your notes? | Single-req latency | Cost |
 |----------|--------|-----------------|----------------------------|--------------------|------|
 | big LLM | 70B+ | yes (in weights) | yes (in weights) | ~0.5–2 s (decode + API) | API $ / big GPU |
-| **tomac** | 2.3M → **10.9M** (from scratch) | routes to `compute` | routes to `wiki_read` | **~240 ms** (P4, no net) | ~$0.01/pass on a P4 |
+| **tomac** | 2.3M (from scratch) | routes to `compute` | routes to `wiki_read` | **~240 ms** (P4, no net) | ~$0.01/pass on a P4 |
 
 > tomac's latency is **measured** on this repo's 8 GB Tesla P4 (single-request,
 > greedy decode, warmed up). The big-LLM figure is a typical-order estimate for
@@ -174,10 +174,14 @@ and a from-scratch model shape check (no base model needed).
 
 No pretrained base — the model is a tiny char-level transformer trained from
 random init. The model code defaults to ~3M params (d_model=256, 6 layers),
-but the **current trained floor is `baseline-big` = 10.9M** (d_model 384, 6
-layers) — bumped after live dogfooding showed ~2.3M loops/garbles under real
-decode (BUG-007, wiki/journal/2026-07-14-capacity-bump.md). Training to usable routing on a
-P4 takes minutes, not hours.
+but the **sovereign router in production is `baseline-100ep-8fn` = 2.3M params**
+(d_model 192, 4 layers, 6 heads). A capacity bump to 10.9M (`baseline-big`)
+REGRESSED on honest eval (collapsed to `answer_direct`, route_acc 0.25 vs the
+2.3M model's ~0.90) — and an augmented-data run (baseline-big-aug, 12.8k cards)
+collapsed identically, falsifying the "bigger brain needs more curriculum"
+hypothesis (wiki/findings/2026-07-15-baseline-big-aug-regressed.md). **Scaling up
+hurts routing** — the 2.3M model is the sweet spot. Training to usable routing
+on a P4 takes minutes, not hours.
 
 ```bash
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

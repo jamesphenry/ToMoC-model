@@ -37,11 +37,15 @@ dependency.
   CALL_OPEN_RE lesson from smol, applied to JSON). Train + eval MUST use these
   so the cue + grammar stay BYTE-IDENTICAL (drift silently kills habit transfer).
 - **From-scratch model** (`scripts/model_scratch.py`): char-level pre-norm
-  Transformer, random init. Current floor = **~10.9M params** (`baseline-big`:
-  d_model=384, 6 layers, 6 heads) — bumped from the original ~2.3M (d192/4L)
-  after BUG-007 showed the smaller model loops/garbles under live decode. Model
-  defaults in `scripts/model_scratch.py` are still d_model=256/6L; training uses
-  `--d-model/--n-layers` per the capacity A/B (see wiki/journal/2026-07-14-capacity-bump.md).
+  Transformer, random init. The sovereign router is **`baseline-100ep-8fn` =
+  ~2.3M params** (d_model 192, 4 layers, 6 heads) — this is the production floor.
+  A 10.9M capacity bump (`baseline-big`) REGRESSED on honest eval (collapsed to
+  `answer_direct`, route_acc 0.25 vs the 2.3M model's ~0.90); an augmented-data
+  re-run collapsed identically, falsifying the "bigger brain needs more
+  curriculum" hypothesis (wiki/findings/2026-07-15-baseline-big-aug-regressed.md).
+  **Scaling up hurts routing** — 2.3M is the sweet spot. Model defaults in
+  `scripts/model_scratch.py` are d_model=256/6L; the 8fn runs used `--d-model 192
+  --n-layers 4`.
   Vocab = chars seen in cards (+ CUE). Saves `model.pt` + `config.json` +
   `tokenizer.json`.
 - **Pipeline**: `build_cards.py` (synth from registry) → `train_router.py`
