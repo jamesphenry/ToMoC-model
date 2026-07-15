@@ -10,27 +10,49 @@
 
 ## Cost stats
 
-Sovereignty metric vs API bills — every GPU pass is metered (walltime × real
-`nvidia-smi` board draw × $0.14/kWh).
+> Nerd-factor metric, not a budget. Sovereignty brag vs API bills — every GPU
+pass is metered (walltime × real `nvidia-smi` board draw × $0.14/kWh). The
+hardware is homelab-owned, so cost is irrelevant to the loop; this number exists
+to show how cheap *sovereign* inference is next to a cloud LLM bill.
 
 - **Total to date: $0.0435** across **51 GPU passes** (10.76 GPU-hours) @ $0.14/kWh, ~90 W over idle.
 - Breakdown: training $0.0392 (19 passes, 9.72 GPU-h) · eval $0.0043 (32 passes, 1.04 GPU-h).
 - A single 100-epoch from-scratch train on an 8 GB Tesla P4 costs ~**$0.002–0.003** (≈30 min). A full eval is ~$0.0002.
 
-**Status:** the current candidate router is being **scaled for capacity** — see
-[wiki/journal — 2026-07-14 capacity bump](wiki/journal/2026-07-14-capacity-bump.md). The previous
-`baseline-100ep-8fn` (2.3M params) scored 96.3% *name-only* route_acc, but
-live dogfooding exposed a degenerate looping habit (BUG-007): it needed a
-rep-penalty crutch to not emit garbage (`TOOOOL`, wrong math). The fix in
-progress is a bigger single-pass router, **`baseline-big` (10.9M params, ~4.7x)**,
-trained on the same data — a clean capacity A/B. Ship decision after honest eval
-(at the live-faithful decode, with an added arg-correctness metric).
+**Status:** the current sovereign router is **`baseline-100ep-8fn` (2.3M)**.
+A capacity bump to **`baseline-big` (10.9M)** REGRESSED — honest eval
+(route_acc 0.25, collapsed to `answer_direct`) and was **rolled back** by
+`promote.py` (pass-58). A capacity A/B is **in flight** testing the data-volume
+hypothesis: a bigger brain needs more *curriculum*, not just epochs — see
+[wiki/findings — capacity data-volume hypothesis](wiki/findings/2026-07-14-capacity-data-volume-hypothesis.md).
+The 8fn 96.3% *name-only* figure is crutch-inflated (rep-penalty 1.4, BUG-007);
+the honest re-baseline lands after the A/B.
 - `baseline-100ep-8fn` — 8 functions, single-tool, **96.3%** name-only (crutch-inflated; see BUG-007).
-- `baseline-big` — **10.9M params** (d_model 384 / 6 layers), training (capacity A/B vs 8fn).
+- `baseline-big` — **10.9M params** (d_model 384 / 6 layers), **REGRESSED**
+  (honest route_acc 0.25, collapsed to answer_direct; rolled back, pass-58).
+  Capacity A/B re-run **in flight** (B: augmented 12.8k cards).
 - `baseline-100ep-mt2` — full-list disambiguation, **93.7%** single + **100%** multi-tool gold_hit.
 All train from random init (no base model).
 
 ---
+
+## Principles (how this repo is run)
+
+- **Homelab-only.** Runs on a consumer 8 GB Tesla P4 (or CPU). No cloud, no
+  datacenter — sovereignty is the thesis, not a feature. If it needs a datacenter
+  to run, it's betrayed.
+- **Hardware cost is irrelevant here.** The box is owned; train-time/$ is
+  *nerd-factor* bragging (sovereign inference vs an API bill), never a personal
+  optimization. Quick, tight prototype loops beat long marathon runs.
+- **This repo is the LAB.** It stays the focus until the model is declared
+  *complete*. Research, A/Bs, findings, and theory all live here. A separate,
+  clean **product** repo (just the router + executors + registry contract +
+  trust-ladder runtime) is a *later* fork — not premature.
+- **Explore every ideal.** Good or bad, every idea gets a home in the wiki /
+  theory. Some threads are deliberately parked or not yet discussed; the lab
+  stays open.
+
+|---\n
 
 ## Why a tiny model? (the thesis)
 
