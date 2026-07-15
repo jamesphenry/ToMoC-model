@@ -7,7 +7,9 @@ Format per file: `YYYYMMDD-<slug>.md` — what we ran, what we saw, the diagnosi
 and the decision. Keep it brutal and short. Reproducibility > prose.
 
 ## Entries
-- [2026-07-13 baseline-train](2026-07-13-baseline-train.md) — first from-scratch run: 30ep d192/4L/6H, route_acc 0.40, repetition collapse.
+- [2026-07-14 capacity-bump REGRESSED](2026-07-14-capacity-bump-regressed.md) — baseline-big (10.9M) HONEST eval: route_acc 0.25, under_call 0.75 (collapsed to answer_direct). Bigger≠better on same data/epochs. ROLLBACK via promote.py. Root cause = undertraining at new capacity, not arch.
+- [2026-07-14 vram-spike-baseline-big](2026-07-14-vram-spike-baseline-big.md) — 5.5 GB VRAM spike during eval was PyTorch allocator fragmentation, NOT model size (~44 MB weights). 8 GB P4 headroom to ~100M params; only concurrent multi-model serving bites.
+- [2026-07-14 baseline-train](2026-07-13-baseline-train.md) — first from-scratch run: 30ep d192/4L/6H, route_acc 0.40, repetition collapse.
 - [2026-07-13 rep-penalty-decode-fix](2026-07-13-rep-penalty-decode-fix.md) — added rep_penalty to break mememe loops; REJECTED (made it worse → undertraining).
 - [2026-07-13 retrain-60ep](2026-07-13-retrain-60ep.md) — single-variable: 30→60 epochs, same arch+LR. DONE (loss 0.20→0.096); eval pending.
 - [2026-07-13 wandb-registry-link](2026-07-13-wandb-registry-link.md) — TWO collections (tomac-models + tomac-datasets); doc pattern blocked by server team-mismatch; custom collections WORK. FINAL.
