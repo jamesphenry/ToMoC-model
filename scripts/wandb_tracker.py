@@ -130,7 +130,7 @@ class _RealTracker:
             except Exception:
                 pass
 
-    def start_run(self, pass_id, fields: dict):
+    def start_run(self, pass_id, fields: dict, name: "str | None" = None):
         if self._run is not None:
             # idempotent: reuse an open run (training script opens one to
             # stream the loss curve) and just push config.
@@ -142,8 +142,12 @@ class _RealTracker:
                         pass
             return
         cfg = {k: v for k, v in fields.items() if v is not None}
+        # display name = "<pass_id> - <purpose>" when a purpose is supplied,
+        # else the legacy "pass-<id>". The id stays the stable pass_id so
+        # re-opened runs merge instead of spawning duplicates.
+        display = name if name else f"pass-{pass_id}"
         self._run = self.wandb.init(
-            project=PROJECT, entity=ENTITY, name=f"pass-{pass_id}",
+            project=PROJECT, entity=ENTITY, name=display,
             id=str(pass_id), resume="allow", config=cfg,
         )
         # give system metrics their own wall-clock x-axis so the async sampler

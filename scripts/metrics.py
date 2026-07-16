@@ -121,7 +121,8 @@ class Metrics:
             pass
         return default
 
-    def new_pass(self, mode: str = "train", **fields) -> int:
+    def new_pass(self, mode: str = "train", run_name: "str | None" = None,
+                 tags: "dict | None" = None, **fields) -> int:
         wt = fields.get("walltime_s")
         # measure real GPU draw at pass start; fall back to assumed 90W
         measured = self.gpu_power_watts()
@@ -141,9 +142,11 @@ class Metrics:
             f"INSERT INTO passes ({keys}) VALUES ({ph})", tuple(f.values()))
         self.conn.commit()
         pid = cur.lastrowid
-        # mirror to wandb
+        # mirror to wandb (name = "<pid> - <purpose>" when supplied)
         if self._wb is not None:
-            self._wb.start_run(pid, f)
+            self._wb.start_run(pid, f, name=run_name)
+            if tags:
+                self._wb.set_tags(tags)
         return pid
 
     def log_metric(self, pass_id: int, metric: str, value, detail: str = None):

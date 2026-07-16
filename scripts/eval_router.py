@@ -47,7 +47,7 @@ def load_model(model_path, device):
     cls = BitNetRouterModel if cfg.get("bitnet") else RouterModel
     model = cls.load(model_path, device=device).to(device)
     model.eval()
-    return tok, model
+    return tok, model, cfg
 
 
 @torch.no_grad()
@@ -107,11 +107,40 @@ def main():
     ap.add_argument("--rep-penalty", type=float, default=1.4,
                     help="repetition penalty (>1 suppresses recent tokens; breaks mememe loops). Must MATCH the live server's value (single decode contract). Default 1.4 = what the small model needs to not loop.")
     ap.add_argument("--limit", type=int, default=0, help="debug: cap cards")
+    ap.add_argument("--purpose", default=None,
+                    help="short human purpose for the W&B run name, e.g. "
+                         "'bitnet-wo head-to-head vs FP pin'. Renders as "
+                         "'<run#> - <purpose>' in W&B.")
+    ap.add_argument("--tags", default="",
+                    help="comma-separated freeform tags to add on top of the "
+                         "auto tags (mode/precision/size/variant), e.g. "
+                         "'ablation,head-to-head'.")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    tok, model = load_model(args.model, device)
+    tok, model, cfg = load_model(args.model, device)
     eos_id = tok.eos_id
+
+    # ---- auto tags (filterable in W&B) derived from the checkpoint config ----
+    is_bitnet = bool(cfg.get("bitnet"))
+    precision = "1-bit" if is_bitnet else "FP"
+    variant = ("bitnet" if (is_bitnet and not cfg.get("weights_only"))
+               else "bitnet-wo" if is_bitnet else "fp")
+    n_params = model.num_params()
+    auto_tags = {
+        "from_scratch": True, "project": "tomac",
+        "mode": "eval", "precision": precision, "variant": variant,
+        "size": f"{n_params//1_000_000}M" if n_params >= 1_000_000
+        else f"{n_params//1000}k",
+        "data": os.path.basename(args.data),
+    }
+    if args.tags:
+        for t in args.tags.split(","):
+            t = t.strip()
+            if t:
+                auto_tags[t] = True
+    run_name = (f"{os.path.basename(os.path.normpath(args.model))} - {args.purpose}"
+                if args.purpose else None)
 
     cards = load_cards(args.data)
     if args.limit:
@@ -191,11 +220,12 @@ def main():
 
     m = Metrics()
     pid = m.new_pass(mode="eval", base_model="(none/random-init)",
-                     num_cards=n, walltime_s=round(wall, 1), status="evaluated")
+                    run_name=run_name, tags=auto_tags,
+                    num_cards=n, walltime_s=round(wall, 1), status="evaluated")
     # tag the (already-open, mirrored) W&B run so eval runs are filterable
     if m._wb is not None:
-        m._wb.set_tags({"from_scratch": True, "project": "tomac",
-                        "model": tag, "data": os.path.basename(args.data)})
+        m._wb.set_tags({**auto_tags, "model": tag,
+                        "data": os.path.basename(args.data)})
     m.log_metric(pid, "route_accuracy", round(route_acc, 4))
     m.log_metric(pid, "well_formed", round(wf_rate, 4))
     m.log_metric(pid, "arg_accuracy", round(arg_acc, 4))

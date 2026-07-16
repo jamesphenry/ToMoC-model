@@ -100,6 +100,18 @@ def main():
                          "(model_bitnet.BitNetRouterModel) instead of the FP "
                          "RouterModel. Same shape contract; weights ternarized "
                          "in forward with STE training.")
+    ap.add_argument("--bitnet-weights-only", action="store_true",
+                    help="BitNet variant with FP activations (no INT8 clamp); "
+                         "only the matmul weights are ternary. Isolates whether "
+                         "the activation clamp causes collapse.")
+    ap.add_argument("--purpose", default=None,
+                    help="short human purpose for the W&B run name, e.g. "
+                         "'bitnet weights-only baseline'. Renders as "
+                         "'<run#> - <purpose>' in W&B.")
+    ap.add_argument("--tags", default="",
+                    help="comma-separated freeform tags to add on top of the "
+                         "auto tags (mode/precision/size/variant), e.g. "
+                         "'ablation,experiment'.")
     ap.add_argument("--limit", type=int, default=0, help="debug: cap samples")
     args = ap.parse_args()
 
@@ -123,11 +135,39 @@ def main():
     dl = DataLoader(ds, batch_size=args.batch, shuffle=True,
                     collate_fn=lambda b: collate(b, args.max_len, tok.pad_id))
 
-    model_cls = BitNetRouterModel if args.bitnet else RouterModel
-    model = model_cls(vocab_size=len(tok), d_model=args.d_model,
-                      n_layers=args.n_layers, n_heads=args.n_heads,
-                      d_ff=args.d_ff, max_len=args.max_len).to(device)
-    print(f"model params: {model.num_params():,}  ({'BitNet b1.58' if args.bitnet else 'FP'})")
+    use_bitnet = bool(args.bitnet or args.bitnet_weights_only)
+    model_cls = BitNetRouterModel if use_bitnet else RouterModel
+    weights_only = bool(args.bitnet_weights_only)
+    model_kwargs = dict(vocab_size=len(tok), d_model=args.d_model,
+                        n_layers=args.n_layers, n_heads=args.n_heads,
+                        d_ff=args.d_ff, max_len=args.max_len)
+    if use_bitnet:
+        model_kwargs["weights_only"] = weights_only
+    model = model_cls(**model_kwargs).to(device)
+    kind = ("BitNet b1.58 (weights+act)" if args.bitnet
+            else "BitNet weights-only" if args.bitnet_weights_only
+            else "FP")
+    print(f"model params: {model.num_params():,}  ({kind})")
+
+    # ---- auto tags (filterable in W&B) derived from facts we already know ----
+    precision = "1-bit" if use_bitnet else "FP"
+    variant = ("bitnet" if args.bitnet
+               else "bitnet-wo" if args.bitnet_weights_only else "fp")
+    auto_tags = {
+        "from_scratch": True, "project": "tomac",
+        "mode": "train", "precision": precision, "variant": variant,
+        "size": f"{model.num_params()//1_000_000}M"
+        if model.num_params() >= 1_000_000
+        else f"{model.num_params()//1000}k",
+        "data": os.path.basename(args.data),
+    }
+    if args.tags:
+        for t in args.tags.split(","):
+            t = t.strip()
+            if t:
+                auto_tags[t] = True
+    run_name = (f"{os.path.basename(os.path.normpath(args.out))} - {args.purpose}"
+                if args.purpose else None)
 
     # ---- MLflow: open a run up front so the loss curve streams live ----
     trk = get_tracker()
@@ -138,9 +178,8 @@ def main():
         "n_heads": args.n_heads, "d_ff": args.d_ff, "max_len": args.max_len,
         "vocab": len(tok), "num_cards": len(ds), "params": model.num_params(),
         "device": device,
-    })
-    trk.set_tags({"from_scratch": True, "project": "tomac",
-                  "data": os.path.basename(args.data)})
+    }, name=run_name)
+    trk.set_tags(auto_tags)
     # ensure the model-registry collection exists (org = WANDB_ENTITY / ToMoC)
     trk.create_registry()
     # log the exact training data (tracked Dataset + raw artifact)
@@ -179,6 +218,7 @@ def main():
 
     m = Metrics()
     pid = m.new_pass(mode="train_scratch", base_model="(none/random-init)",
+                    run_name=run_name, tags=auto_tags,
                     epochs=args.epochs, lr=args.lr, num_cards=len(ds),
                     loss_final=round(loss_final, 4),
                     walltime_s=round(wall, 1),
@@ -201,7 +241,7 @@ def main():
         "gpu_watts": row["gpu_watts"] if row and row["gpu_watts"] is not None else 0.0,
         "params": model.num_params(),
     })
-    trk.set_tags({"pass_id": pid})
+    trk.set_tags({**auto_tags, "pass_id": pid})
     trk.log_artifact(args.out)
     trk.end_run()
     m.summarize(pid)
